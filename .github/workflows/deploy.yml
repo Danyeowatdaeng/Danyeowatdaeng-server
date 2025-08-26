@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]
+
+jobs:
+  build-docker-image:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+
+      - name: Build with Gradle Wrapper
+        run: |
+          chmod +x gradlew
+          ./gradlew build -x test
+
+      - name: Sign in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and Push
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/planit:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/planit:latest
+
+  run-docker-image-on-ec2:
+    needs: build-docker-image
+    runs-on: [ self-hosted, prod-1 ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 🔐 시크릿에서 멀티라인 .env를 복원
+      - name: Write .env file from secret
+        shell: bash
+        run: |
+          # 개행/특수문자 보존을 위해 echo 대신 printf 사용
+          printf '%s' "${{ secrets.ENV_PROD }}" > .env
+          # (선택) 권한 제한
+          chmod 600 .env
+
+      - name: Compose down
+        run: sudo docker compose --env-file .env down || true
+
+      - name: Pull new image
+        run: sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/planit:latest
+
+      - name: Compose up
+        run: sudo docker compose --env-file .env up -d
+
+      - name: Prune old images
+        run: sudo docker system prune -f
