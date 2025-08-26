@@ -1,36 +1,36 @@
 package com.tourapi.tourapi.web.controller.auth;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.springframework.http.HttpStatus;
+import com.tourapi.tourapi.common.exception.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tourapi.tourapi.auth.dto.RefreshRequest;
+import com.tourapi.tourapi.auth.dto.SocialLoginRequest;
+import com.tourapi.tourapi.auth.dto.TokenResponse;
+import com.tourapi.tourapi.auth.service.AuthService;
 import com.tourapi.tourapi.auth.token.RefreshTokenStore;
+
 import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
 import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
 import com.tourapi.tourapi.common.exception.token.status.TokenErrorStatus;
+import com.tourapi.tourapi.common.exception.token.status.TokenSuccessStatus;
+import com.tourapi.tourapi.common.exception.member.status.MemberSuccessStatus;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final RefreshTokenStore store;
+    private final AuthService authService;
 
-    public AuthController(RefreshTokenStore store) {
+    public AuthController(RefreshTokenStore store, AuthService authService) {
         this.store = store;
-    }
-
-    public static class RefreshRequest {
-        @Schema(description = "기존 리프레시 토큰", requiredMode = Schema.RequiredMode.REQUIRED, example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
-        public String oldRefresh;
+        this.authService = authService;
     }
 
     @PostMapping("/refresh")
@@ -46,20 +46,26 @@ public class AuthController {
             value = MemberErrorStatus.class,
             codes = {"MEMBER_NOT_FOUND"}
     )
-    public ResponseEntity<?> refresh(@RequestBody RefreshRequest body) {
-        String uid = "demoUser";
-        String sid = "demoSession";
-        String familyId = "demoFamily";
+    public ResponseEntity<ApiResponse<TokenResponse>> refresh(@RequestBody RefreshRequest body) {
         try {
-            RefreshTokenStore.RotateResult r = store.rotate(body.oldRefresh, uid, sid, familyId);
-            Map<String, String> resp = new HashMap<>();
-            resp.put("accessToken", "dummy-access-token");
-            resp.put("refreshToken", r.newRefreshRaw());
-            return ResponseEntity.ok(resp);
-        } catch (IllegalStateException ex) {
-            Map<String, String> err = new HashMap<>();
-            err.put("error", ex.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(err);
+            TokenResponse tokens = authService.refreshToken(body.oldRefresh);
+            return ApiResponse.onSuccess(TokenSuccessStatus.REFRESH_SUCCESS, tokens);
+        } catch (Exception ex) {
+            return ApiResponse.onFailure(TokenErrorStatus.INVALID_REFRESH_TOKEN, null);
+        }
+    }
+
+    @PostMapping("/login/social")
+    @Operation(
+            summary = "소셜 로그인",
+            description = "소셜 토큰을 검증하고 액세스/리프레시 토큰을 발급합니다."
+    )
+    public ResponseEntity<ApiResponse<TokenResponse>> socialLogin(@RequestBody SocialLoginRequest body) {
+        try {
+            TokenResponse tokens = authService.socialLogin(body.provider, body.token);
+            return ApiResponse.onSuccess(MemberSuccessStatus.SIGN_IN_SUCCESS, tokens);
+        } catch (Exception ex) {
+            return ApiResponse.onFailure(TokenErrorStatus.INVALID_REFRESH_TOKEN, null);
         }
     }
 }

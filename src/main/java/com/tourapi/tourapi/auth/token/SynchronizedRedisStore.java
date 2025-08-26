@@ -1,5 +1,7 @@
 package com.tourapi.tourapi.auth.token;
 
+import com.tourapi.tourapi.common.exception.general.GeneralException;
+import com.tourapi.tourapi.common.exception.token.status.TokenErrorStatus;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -81,13 +83,13 @@ public class SynchronizedRedisStore implements RefreshTokenStore {
             HashOperations<String, Object, Object> h = redisTemplate.opsForHash();
             Boolean exists = redisTemplate.hasKey(indexKey);
             if (exists == null || !exists) {
-                throw new IllegalStateException("MISSING_OLD");
+                throw new GeneralException(TokenErrorStatus.INVALID_REFRESH_TOKEN);
             }
             String storedUid = (String) h.get(indexKey, "uid");
             String storedSid = (String) h.get(indexKey, "sid");
             String storedFamily = (String) h.get(indexKey, "familyId");
             if (!Objects.equals(uid, storedUid) || !Objects.equals(sid, storedSid) || !Objects.equals(familyId, storedFamily)) {
-                throw new IllegalStateException("INVALID_CONTEXT");
+                throw new GeneralException(TokenErrorStatus.INVALID_CONTEXT);
             }
 
             String newRaw = UUID.randomUUID().toString();

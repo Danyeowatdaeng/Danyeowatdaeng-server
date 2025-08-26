@@ -1,7 +1,6 @@
 package com.tourapi.tourapi.auth.jwt;
 
 
-import com.tourapi.tourapi.member.association.SignedMember;
 import com.tourapi.tourapi.member.enums.Role;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -31,21 +30,27 @@ public class JwtProvider {
         this.refreshTokenExpirationMs = properties.getRefreshTokenExpirationMs();
     }
 
-    public String createSignUpToken(SignedMember signedMember) {
-        return createToken(signedMember.getId(), signedMember.getEmail(), signedMember.getName(),
-                           signedMember.getRole(), true, expirationMs);
+
+
+    public String createAccessToken(Long id, String email, String name, Role role, boolean isSignUpCompleted) {
+        return createToken(id, email, name, role, isSignUpCompleted, expirationMs);
     }
 
+    public String createRefreshToken(Long id, String email, String name, Role role, boolean isSignUpCompleted) {
+        return createToken(id, email, name, role, isSignUpCompleted, refreshTokenExpirationMs);
+    }
+
+    // Backward-compatible overloads (default isSignUpCompleted = true)
     public String createAccessToken(Long id, String email, String name, Role role) {
-        return createToken(id, email, name, role, false, expirationMs);
+        return createToken(id, email, name, role, true, expirationMs);
     }
 
     public String createRefreshToken(Long id, String email, String name, Role role) {
-        return createToken(id, email, name, role, false, refreshTokenExpirationMs);
+        return createToken(id, email, name, role, true, refreshTokenExpirationMs);
     }
 
     private String createToken(
-            Long id, String email, String name, Role role, Boolean signUp, long expirationMs
+            Long id, String email, String name, Role role, boolean isSignUpCompleted, long expirationMs
     ) {
         final Date now = new Date();
         final Date expiry = new Date(now.getTime() + expirationMs);
@@ -57,7 +62,7 @@ public class JwtProvider {
                 .claim("email", email)
                 .claim("memberName", name)
                 .claim("role", role.toString())
-                .claim("signUp", signUp.toString())
+                .claim("isSignUpCompleted", String.valueOf(isSignUpCompleted))
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(secretKey, SignatureAlgorithm.HS256)
@@ -104,6 +109,11 @@ public class JwtProvider {
     }
 
     public String getMemberName(String token) {return getClaims(token).get("memberName", String.class);}
+
+    public boolean getIsSignUpCompleted(String token) {
+        String isSignUpCompleted = getClaims(token).get("isSignUpCompleted", String.class);
+        return isSignUpCompleted != null && Boolean.parseBoolean(isSignUpCompleted);
+    }
 
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
@@ -171,20 +181,6 @@ public class JwtProvider {
         }
     }
 
-    public boolean isAccessToken(String token) {
-        return getClaims(token).get("signUp").equals(Boolean.FALSE.toString());
-    }
-
-    public Long validateSignUpTokenAndGetId(String bearerToken) {
-        String token = resolveHeaderToken(bearerToken, prefix);
-        try {
-            if (token == null || isAccessToken(token)) {
-                throw new JwtException("회원가입용 토큰이 아닙니다.");
-            }
-            return getId(token);
-        } catch (JwtException e) {
-            throw new JwtException(e.getMessage());
-        }
-    }
+    // removed: isAccessToken and validateSignUpTokenAndGetId - sign-up token concept removed
 }
 
