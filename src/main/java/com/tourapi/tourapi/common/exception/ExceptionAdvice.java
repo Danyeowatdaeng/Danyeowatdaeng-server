@@ -1,17 +1,23 @@
 package com.tourapi.tourapi.common.exception;
 
 
-import com.tourapi.tourapi.common.exception.general.GeneralException;
-import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
-import io.jsonwebtoken.JwtException;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.tourapi.tourapi.common.exception.general.GeneralException;
+import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
+
+import io.jsonwebtoken.JwtException;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
-@RestControllerAdvice
+@RestControllerAdvice(
+        annotations = { RestController.class },
+        basePackages = { "com.tourapi.tourapi.web.controller" }
+)
 public class ExceptionAdvice {
 
     /**

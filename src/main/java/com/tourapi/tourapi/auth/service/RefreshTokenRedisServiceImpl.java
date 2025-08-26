@@ -1,11 +1,12 @@
 package com.tourapi.tourapi.auth.service;
 
-import lombok.extern.slf4j.Slf4j;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -13,8 +14,7 @@ public class RefreshTokenRedisServiceImpl implements RefreshTokenRedisService {
     
     private final RedisTemplate<String, Object> redisTemplate;
     
-    // Redis Hash 키 상수
-    private static final String REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY = "refreshTokenToMemberId";
+    // Redis Hash 키 상수 (단일 매핑: memberId -> refreshToken)
     private static final String MEMBER_ID_TO_REFRESH_TOKEN_HASH_KEY = "memberIdToRefreshToken";
     private static final Duration TTL_DURATION = Duration.ofDays(30);
 
@@ -26,43 +26,15 @@ public class RefreshTokenRedisServiceImpl implements RefreshTokenRedisService {
     @Override
     public void saveRefreshToken(Long memberId, String refreshToken) {
         try {
-            // refreshToken -> memberId 매핑 저장
-            redisTemplate.opsForHash().put(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY, refreshToken, memberId);
-            
             // memberId -> refreshToken 매핑 저장
             redisTemplate.opsForHash().put(MEMBER_ID_TO_REFRESH_TOKEN_HASH_KEY, memberId.toString(), refreshToken);
             
             // TTL 설정 (30일)
-            redisTemplate.expire(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY, TTL_DURATION.toSeconds(), TimeUnit.SECONDS);
             redisTemplate.expire(MEMBER_ID_TO_REFRESH_TOKEN_HASH_KEY, TTL_DURATION.toSeconds(), TimeUnit.SECONDS);
             
             log.info("✅ 리프레시 토큰 저장 성공 - 회원ID: {}, 토큰: {}", memberId, refreshToken);
         } catch (Exception e) {
             log.error("❌ 리프레시 토큰 저장 실패 - 회원ID: {}, 토큰: {}", memberId, refreshToken, e);
-            throw e;
-        }
-    }
-
-    
-    @Override
-    public void deleteByRefreshToken(String refreshToken) {
-        try {
-            // refreshToken으로 memberId 조회
-            Object memberIdObj = redisTemplate.opsForHash().get(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY, refreshToken);
-            
-            if (memberIdObj != null) {
-                Long memberId = Long.valueOf(memberIdObj.toString());
-                
-                // 양방향 매핑 삭제
-                redisTemplate.opsForHash().delete(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY, refreshToken);
-                redisTemplate.opsForHash().delete(MEMBER_ID_TO_REFRESH_TOKEN_HASH_KEY, memberId.toString());
-                
-                log.info("✅ 리프레시 토큰 매핑 삭제 완료 - 회원ID: {}, 토큰: {}", memberId, refreshToken);
-            } else {
-                log.warn("⚠️ 삭제할 리프레시 토큰을 찾을 수 없음 - 토큰: {}", refreshToken);
-            }
-        } catch (Exception e) {
-            log.error("❌ 리프레시 토큰 삭제 실패 - 토큰: {}", refreshToken, e);
             throw e;
         }
     }
@@ -77,9 +49,8 @@ public class RefreshTokenRedisServiceImpl implements RefreshTokenRedisService {
             if (refreshTokenObj != null) {
                 String refreshToken = refreshTokenObj.toString();
                 
-                // 양방향 매핑 삭제
+                // 매핑 삭제
                 redisTemplate.opsForHash().delete(MEMBER_ID_TO_REFRESH_TOKEN_HASH_KEY, memberId.toString());
-                redisTemplate.opsForHash().delete(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY, refreshToken);
                 
                 log.info("✅ 회원ID 매핑 삭제 완료 - 회원ID: {}, 토큰: {}", memberId, refreshToken);
             } else {
@@ -87,21 +58,6 @@ public class RefreshTokenRedisServiceImpl implements RefreshTokenRedisService {
             }
         } catch (Exception e) {
             log.error("❌ 회원ID 매핑 삭제 실패 - 회원ID: {}", memberId, e);
-            throw e;
-        }
-    }
-
-    
-    @Override
-    public Long getMemberIdByRefreshToken(String refreshToken) {
-        try {
-            Object memberIdObj = redisTemplate.opsForHash().get(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY, refreshToken);
-            Long memberId = memberIdObj != null ? Long.valueOf(memberIdObj.toString()) : null;
-            
-            log.debug("🔍 리프레시 토큰으로 회원ID 조회 - 토큰: {}, 회원ID: {}", refreshToken, memberId);
-            return memberId;
-        } catch (Exception e) {
-            log.error("❌ 리프레시 토큰으로 회원ID 조회 실패 - 토큰: {}", refreshToken, e);
             throw e;
         }
     }
@@ -125,7 +81,6 @@ public class RefreshTokenRedisServiceImpl implements RefreshTokenRedisService {
     @Override
     public void clearAllRefreshTokens() {
         try {
-            redisTemplate.delete(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY);
             redisTemplate.delete(MEMBER_ID_TO_REFRESH_TOKEN_HASH_KEY);
             log.info("✅ 모든 리프레시 토큰 삭제 완료");
         } catch (Exception e) {
@@ -138,7 +93,7 @@ public class RefreshTokenRedisServiceImpl implements RefreshTokenRedisService {
     @Override
     public long getRefreshTokenCount() {
         try {
-            long count = redisTemplate.opsForHash().size(REFRESH_TOKEN_TO_MEMBER_ID_HASH_KEY);
+            long count = redisTemplate.opsForHash().size(MEMBER_ID_TO_REFRESH_TOKEN_HASH_KEY);
             log.info("📊 현재 리프레시 토큰 개수: {}", count);
             return count;
         } catch (Exception e) {
@@ -152,9 +107,7 @@ public class RefreshTokenRedisServiceImpl implements RefreshTokenRedisService {
     public boolean validateRefreshTokenMapping(Long memberId, String refreshToken) {
         try {
             String storedToken = getRefreshTokenByMemberId(memberId);
-            Long storedMemberId = getMemberIdByRefreshToken(refreshToken);
-            
-            boolean isValid = refreshToken.equals(storedToken) && memberId.equals(storedMemberId);
+            boolean isValid = refreshToken.equals(storedToken);
             log.debug("🔍 리프레시 토큰 매핑 유효성 검사 - 회원ID: {}, 토큰: {}, 유효성: {}", 
                        memberId, refreshToken, isValid);
             return isValid;
