@@ -46,10 +46,4 @@ public class TermsAgreement extends BaseEntity {
 
     @Column(nullable = false)
     private LocalDateTime agreedAt;
-
-    @Column(length = 45)
-    private String clientIp;
-
-    @Column(columnDefinition = "TEXT")
-    private String userAgent;
 }

@@ -14,8 +14,11 @@ public interface TermsService {
     // 특정 약관의 현재 버전 조회
     TermsDocument getCurrentTerms(TermsCode code);
 
-    // 약관 동의 처리
-    void agreeToTerms(Long memberId, TermsCode termsCode, String clientIp, String userAgent);
+    // 약관 동의 처리 (단일)
+    void agreeToTerms(Long memberId, TermsCode termsCode);
+
+    // 여러 약관 동의 처리 (배치)
+    void agreeToMultipleTerms(Long memberId, List<TermsCode> termsCodes);
 
     // 회원가입 완료 상태 확인 및 업데이트
     void checkAndUpdateSignUpCompletion(Member member);
