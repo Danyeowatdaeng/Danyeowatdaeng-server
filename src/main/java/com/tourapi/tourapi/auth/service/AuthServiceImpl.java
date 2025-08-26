@@ -57,12 +57,19 @@ public class AuthServiceImpl implements AuthService {
             long id = (member != null) ? member.getId() : Math.abs((long) email.hashCode());
             boolean isSignUpCompleted = (member != null) && member.isSignUpCompleted();
 
+            // member가 null이면 액세스 토큰만 생성
+            if (member == null) {
+                String accessToken = jwtProvider.createAccessToken(id, email, name, Role.USER, isSignUpCompleted);
+                return new TokenResponse(accessToken, email, name, isSignUpCompleted);
+            }
+
+            // member가 존재하면 액세스 토큰과 리프레시 토큰 모두 생성
             TokenPair tokens = issueTokensOnLogin(id, email, name, Role.USER, isSignUpCompleted);
             return new TokenResponse(tokens.accessToken(), tokens.refreshToken(), tokens.sessionId(), tokens.familyId(), email, name, isSignUpCompleted);
-                 } catch (Exception e) {
-             throw new RuntimeException("소셜 로그인 실패: " + e.getMessage(), e);
-         }
-     }
+        } catch (Exception e) {
+            throw new RuntimeException("소셜 로그인 실패: " + e.getMessage(), e);
+        }
+    }
      
      @Override
      public TokenResponse refreshToken(String oldRefreshToken) {

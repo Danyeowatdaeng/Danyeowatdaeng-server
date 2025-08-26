@@ -57,12 +57,19 @@ public class AuthController {
 
     @PostMapping("/login/social")
     @Operation(
-            summary = "소셜 로그인",
-            description = "소셜 토큰을 검증하고 액세스/리프레시 토큰을 발급합니다."
+            summary = "소셜 로그인 및 회원가입",
+            description = "가입되어 있는 경우는 액세스/리프레시 주고, 안되어있으면 액세스만 줍니다. 판단은 isSignUpCompleted로"
     )
     public ResponseEntity<ApiResponse<TokenResponse>> socialLogin(@RequestBody SocialLoginRequest body) {
         try {
             TokenResponse tokens = authService.socialLogin(body.provider, body.token);
+            
+            // 리프레시 토큰이 없으면 약관 동의가 필요한 상태로 간주
+            if (tokens.refreshToken == null) {
+                return ApiResponse.onSuccess(MemberSuccessStatus.TERMS_AGREEMENT_REQUIRED, tokens);
+            }
+            
+            // 리프레시 토큰이 있으면 정상 로그인
             return ApiResponse.onSuccess(MemberSuccessStatus.SIGN_IN_SUCCESS, tokens);
         } catch (Exception ex) {
             return ApiResponse.onFailure(TokenErrorStatus.INVALID_REFRESH_TOKEN, null);

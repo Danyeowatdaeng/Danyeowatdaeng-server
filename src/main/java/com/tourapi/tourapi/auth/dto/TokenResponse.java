@@ -33,5 +33,16 @@ public class TokenResponse {
         this.name = name;
         this.isSignUpCompleted = isSignUpCompleted;
     }
+    
+    // 리프레시 토큰이 없는 경우를 위한 생성자
+    public TokenResponse(String accessToken, String email, String name, boolean isSignUpCompleted) {
+        this.accessToken = accessToken;
+        this.refreshToken = null;
+        this.sid = null;
+        this.familyId = null;
+        this.email = email;
+        this.name = name;
+        this.isSignUpCompleted = isSignUpCompleted;
+    }
 }
 
