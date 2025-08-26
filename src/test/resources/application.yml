@@ -1,0 +1,38 @@
+spring:
+  profiles:
+    active: test
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+jwt:
+  secret: "your-super-secret-key-that-should-be-long-and-secure-for-testing"
+  expirationMs: 7200000
+  refreshTokenExpirationMs: 2592000000
+  tokenPrefix: "Bearer "
+  issuer: "tourapi"
+  audiences:
+    - "web"
+    - "mobile"
+
+oauth:
+  google:
+    client-id: "test-google-client-id"
+    playground-client-id: "test-google-playground-client-id"
+  kakao:
+    client-id: "test-kakao-client-id"
+  naver:
+    client-id: "test-naver-client-id"
+    client-secret: "test-naver-client-secret"
