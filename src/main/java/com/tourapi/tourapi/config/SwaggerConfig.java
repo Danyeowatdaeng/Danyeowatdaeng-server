@@ -1,8 +1,20 @@
 package com.tourapi.tourapi.config;
 
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springdoc.core.customizers.OperationCustomizer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
 import com.tourapi.tourapi.common.exception.ExplainError;
+import com.tourapi.tourapi.common.exception.general.status.ErrorResponse;
+
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.examples.Example;
@@ -14,22 +26,12 @@ import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.customizers.OperationCustomizer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import com.tourapi.tourapi.common.exception.general.status.ErrorResponse;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Configuration
 public class SwaggerConfig {
 
     @Bean
-    public OpenAPI PlanItAPI() {
+    public OpenAPI TourAPI() {
         Info info = new Info()
                 .title("다녀왔댕 API")
                 .description("다녀왔댕 API 명세서");
@@ -55,11 +57,23 @@ public class SwaggerConfig {
     @Bean
     public OperationCustomizer errorCodeExampleCustomizer() {
         return (operation, handlerMethod) -> {
-            ApiErrorCodeExample annotation = handlerMethod.getMethodAnnotation(ApiErrorCodeExample.class);
-            if (annotation != null) {
-                generateErrorExamples(operation.getResponses(), annotation.value(), annotation.codes());
+            try {
+                // Repeatable 지원: 여러 @ApiErrorCodeExample 처리
+                ApiErrorCodeExample[] annotations = handlerMethod.getMethod().getAnnotationsByType(ApiErrorCodeExample.class);
+                if (annotations != null && annotations.length > 0) {
+                    // responses가 null일 수 있으므로 방어적으로 생성
+                    if (operation.getResponses() == null) {
+                        operation.setResponses(new ApiResponses());
+                    }
+                    for (ApiErrorCodeExample a : annotations) {
+                        generateErrorExamples(operation.getResponses(), a.value(), a.codes());
+                    }
+                }
+                return operation;
+            } catch (Throwable t) {
+                // 문서 생성 실패가 전체 API 문서 500으로 번지지 않도록 방어
+                return operation;
             }
-            return operation;
         };
     }
 
@@ -93,13 +107,27 @@ public class SwaggerConfig {
             MediaType mediaType = new MediaType();
             examples.forEach(e -> mediaType.addExamples(e.getName(), e.getExample()));
 
-            Content content = new Content();
-            content.addMediaType("application/json", mediaType);
-
-            ApiResponse apiResponse = new ApiResponse();
-            apiResponse.setContent(content);
-
-            responses.addApiResponse(String.valueOf(status), apiResponse);
+            String code = String.valueOf(status);
+            ApiResponse existing = responses.get(code);
+            if (existing == null) {
+                Content content = new Content();
+                content.addMediaType("application/json", mediaType);
+                ApiResponse apiResponse = new ApiResponse();
+                apiResponse.setDescription("Auto-generated error examples");
+                apiResponse.setContent(content);
+                responses.put(code, apiResponse);
+            } else {
+                if (existing.getDescription() == null || existing.getDescription().isBlank()) {
+                    existing.setDescription("Auto-generated error examples");
+                }
+                Content content = existing.getContent();
+                if (content == null) {
+                    content = new Content();
+                    existing.setContent(content);
+                }
+                content.addMediaType("application/json", mediaType);
+                responses.put(code, existing);
+            }
         });
     }
 
