@@ -1,3 +1,15 @@
+token:
+  store:
+    impl: lua
+  refresh:
+    ttl-seconds: 1209600
+  hmac-secret: ${REFRESH_HMAC_SECRET}
+
+spring:
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}  # 기본 dev
