@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+  logging:
+    level:
+      root: DEBUG
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+logging:
+  level:
+    com.planit: DEBUG
+    org.springframework.web: INFO
+
+jwt:
+  secret: "your-super-secret-key-that-should-be-long-and-secure-for-development"
+  expirationMs: 7200000 # 2시간 (밀리초)
+  refreshTokenExpirationMs: 2592000000 # 30일 (밀리초)
+  tokenPrefix: "Bearer "
+  issuer: "tourapi"
+  audiences:
+    - "web"
+    - "mobile"
+
+
