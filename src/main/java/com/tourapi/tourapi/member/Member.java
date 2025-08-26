@@ -4,10 +4,13 @@ import com.tourapi.tourapi.auth.enums.OauthProvider;
 import com.tourapi.tourapi.common.entity.BaseEntity;
 import com.tourapi.tourapi.member.enums.Role;
 import com.tourapi.tourapi.petAvatar.PetAvatar;
+import com.tourapi.tourapi.terms.TermsAgreement;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -64,4 +67,7 @@ public class Member extends BaseEntity {
 
     @Column
     private LocalDateTime inactive;
+
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TermsAgreement> termsAgreements = new ArrayList<>();
 }
