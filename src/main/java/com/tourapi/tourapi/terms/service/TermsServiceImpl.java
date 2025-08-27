@@ -42,9 +42,9 @@ public class TermsServiceImpl implements TermsService {
             .orElseThrow(() -> new GeneralException(TermsErrorStatus.TERMS_NOT_FOUND));
     }
     
-    // 회원가입 완료 처리 (필수 약관 동의 후)
+    // 약관 동의 처리
     @Override
-    public void completeSignUp(Member member, List<TermsCode> termsCodes) {
+    public void agreeTerms(Member member, List<TermsCode> termsCodes) {
         LocalDateTime now = LocalDateTime.now();
         
         for (TermsCode termsCode : termsCodes) {
@@ -61,6 +61,13 @@ public class TermsServiceImpl implements TermsService {
                 
             termsAgreementRepository.save(agreement);
         }
+    }
+    
+    // 회원가입 완료 처리 (필수 약관 동의 후)
+    @Override
+    public void completeSignUp(Member member, List<TermsCode> termsCodes) {
+        // 약관 동의 처리
+        agreeTerms(member, termsCodes);
         
         // 모든 필수 약관에 동의했는지 확인하고 회원가입 완료 상태 업데이트
         checkAndUpdateSignUpCompletion(member);

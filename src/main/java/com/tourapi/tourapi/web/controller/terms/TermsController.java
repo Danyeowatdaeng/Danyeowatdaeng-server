@@ -54,13 +54,13 @@ public class TermsController {
         return ApiResponse.onSuccess(TermsSuccessStatus.TERMS_FOUND, terms);
     }
     
-    @PostMapping("/complete-signup")
-    @Operation(summary = "회원가입 완료", description = "필수 약관 동의 후 회원가입을 완료합니다. 현재는 약관 없어서 termsCode 안에 빈걸로 주면 됩니다")
+    @PostMapping("/agree-terms")
+    @Operation(summary = "약관 동의", description = "필수 약관에 동의합니다.")
     @ApiErrorCodeExample(
             value = TermsErrorStatus.class,
             codes = {"TERMS_NOT_FOUND", "TERMS_ALREADY_AGREED", "TERMS_VERSION_MISMATCH", "TERMS_AGREEMENT_REQUIRED"}
     )
-    public ResponseEntity<ApiResponse<Void>> completeSignUp(@RequestBody TermsAgreementRequest request, @RequestHeader("Authorization") String authorizationHeader) {
+    public ResponseEntity<ApiResponse<Void>> agreeTerms(@RequestBody TermsAgreementRequest request, @RequestHeader("Authorization") String authorizationHeader) {
         
         // Authorization 헤더에서 액세스 토큰 추출
         String accessToken = authorizationHeader.replace("Bearer ", "");
@@ -86,8 +86,8 @@ public class TermsController {
                 return memberRepository.save(newMember);
             });
             
-        termsService.completeSignUp(member, request.getTermsCodes());
-        return ApiResponse.onSuccess(TermsSuccessStatus.SIGNUP_COMPLETED);
+        termsService.agreeTerms(member, request.getTermsCodes());
+        return ApiResponse.onSuccess(TermsSuccessStatus.TERMS_AGREED);
     }
     
     @GetMapping("/agreement-status")
