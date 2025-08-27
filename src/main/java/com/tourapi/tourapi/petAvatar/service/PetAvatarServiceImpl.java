@@ -1,5 +1,7 @@
 package com.tourapi.tourapi.petAvatar.service;
 
+import com.tourapi.tourapi.common.exception.petAvatar.PetAvatarHandler;
+import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
 import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.repository.MemberRepository;
 import com.tourapi.tourapi.petAvatar.PetAvatar;
@@ -51,13 +53,13 @@ public class PetAvatarServiceImpl implements PetAvatarService {
     @Override
     public PetAvatar getPetAvatarById(Long id) {
         return petAvatarRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("PetAvatar not found with id: " + id));
+                .orElseThrow(() -> new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_NOT_FOUND));
     }
 
     @Override
     public PetAvatar getPetAvatarByCode(String code) {
         return petAvatarRepository.findByCodeAndIsActiveTrue(code)
-                .orElseThrow(() -> new IllegalArgumentException("PetAvatar not found with code: " + code));
+                .orElseThrow(() -> new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_NOT_FOUND));
     }
 
     @Override
@@ -80,12 +82,12 @@ public class PetAvatarServiceImpl implements PetAvatarService {
         
         // PetAvatar가 활성화되어 있는지 확인
         if (!petAvatar.getIsActive()) {
-            throw new IllegalArgumentException("PetAvatar is not active");
+            throw new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_INACTIVE);
         }
         
         // 커스텀 PetAvatar인 경우 소유권 확인
         if (petAvatar.getIsCustom() && !memberId.equals(petAvatar.getMemberId())) {
-            throw new IllegalArgumentException("Access denied to custom PetAvatar");
+            throw new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_ACCESS_DENIED);
         }
         
         member.setPetAvatar(petAvatar);

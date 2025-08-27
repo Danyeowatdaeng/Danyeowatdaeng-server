@@ -35,6 +35,12 @@ public enum MemberErrorStatus implements ErrorResponse {
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER4030", "알림 설정이 존재하지 않습니다."),
     @ExplainError("필수 약관 파일이 존재하지 않음")
     TERM_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER4040", "필수 약관 파일이 존재하지 않습니다."),
+    
+    // PetAvatar 관련
+    @ExplainError("PetAvatar가 선택되지 않음")
+    PET_AVATAR_NOT_SELECTED(HttpStatus.BAD_REQUEST, "MEMBER4050", "PetAvatar가 선택되지 않았습니다."),
+    @ExplainError("이미 PetAvatar가 선택됨")
+    PET_AVATAR_ALREADY_SELECTED(HttpStatus.BAD_REQUEST, "MEMBER4051", "이미 PetAvatar가 선택되었습니다."),
     ;
 
     private final HttpStatus httpStatus;

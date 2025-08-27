@@ -40,7 +40,7 @@ public class MemberServiceImpl implements MemberService {
         
         // PetAvatar가 선택되었는지 확인
         if (member.getPetAvatar() == null) {
-            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND); // TODO: 적절한 에러 상태로 변경
+            throw new MemberHandler(MemberErrorStatus.PET_AVATAR_NOT_SELECTED);
         }
         
         member.setSignUpCompleted(true);
