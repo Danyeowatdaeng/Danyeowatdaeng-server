@@ -5,12 +5,14 @@ import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
 import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class MemberServiceImpl implements MemberService {
     
     private final MemberRepository memberRepository;
@@ -22,7 +24,34 @@ public class MemberServiceImpl implements MemberService {
     }
     
     @Override
+    public Member getMemberById(Long memberId) {
+        return memberRepository.findById(memberId)
+            .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
+    }
+    
+    @Override
     public boolean existsById(Long memberId) {
         return memberRepository.existsById(memberId);
+    }
+    
+    @Override
+    public void completeSignup(Long memberId) {
+        Member member = getMemberById(memberId);
+        
+        // PetAvatar가 선택되었는지 확인
+        if (member.getPetAvatar() == null) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND); // TODO: 적절한 에러 상태로 변경
+        }
+        
+        member.setSignUpCompleted(true);
+        memberRepository.save(member);
+        
+        log.info("Signup completed for member {}", memberId);
+    }
+    
+    @Override
+    public boolean hasSelectedPetAvatar(Long memberId) {
+        Member member = getMemberById(memberId);
+        return member.getPetAvatar() != null;
     }
 }
