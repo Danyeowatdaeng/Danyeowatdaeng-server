@@ -36,8 +36,8 @@ jobs:
 
       - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/planit:latest .
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/planit:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/tourapi:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/tourapi:latest
 
   run-docker-image-on-ec2:
     needs: build-docker-image
@@ -59,7 +59,7 @@ jobs:
         run: sudo docker compose --env-file .env down || true
 
       - name: Pull new image
-        run: sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/planit:latest
+        run: sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tourapi:latest
 
       - name: Compose up
         run: sudo docker compose --env-file .env up -d
