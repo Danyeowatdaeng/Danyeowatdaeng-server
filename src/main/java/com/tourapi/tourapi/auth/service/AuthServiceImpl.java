@@ -50,22 +50,34 @@ public class AuthServiceImpl implements AuthService {
     public TokenResponse socialLogin(String provider, String token) {
         try {
             SocialTokenVerifier.SocialUserInfo info = socialTokenVerifier.verify(provider, token);
+            String providerUserId = info.getUserId();
             String email = info.getEmail();
             String name = info.getName();
 
-            // 기존 회원 조회 (email 기준). 없으면 임시 id 생성 및 가입 미완으로 간주
+            // 제공자 식별자 + 이메일 기준으로 회원 조회, 없으면 생성
             Member member = memberRepository.findByEmail(email).orElse(null);
-            long id = (member != null) ? member.getId() : Math.abs((long) email.hashCode());
-            boolean isSignUpCompleted = (member != null) && member.isSignUpCompleted();
-
-            // member가 null이면 액세스 토큰만 생성
             if (member == null) {
-                String accessToken = jwtProvider.createAccessToken(id, email, name, Role.USER, isSignUpCompleted);
-                return new TokenResponse(accessToken, email, name, isSignUpCompleted);
+                member = new Member();
+                member.setProvider(OauthProvider.valueOf(provider.toUpperCase()));
+                member.setProviderUserId(providerUserId);
+                member.setEmail(email);
+                member.setNickname(null);
+                member.setProfileImageUrl(null);
+                member.setSignUpCompleted(false);
+                member.setRole(Role.USER);
+                member = memberRepository.save(member);
             }
 
-            // member가 존재하면 액세스 토큰과 리프레시 토큰 모두 생성
-            TokenPair tokens = issueTokensOnLogin(id, email, name, Role.USER, isSignUpCompleted);
+            Long id = member.getId();
+            boolean isSignUpCompleted = member.isSignUpCompleted();
+
+            // 가입 미완료면 액세스 토큰만 발급, 완료면 리프레시 포함 발급
+            if (!isSignUpCompleted) {
+                String accessToken = jwtProvider.createAccessToken(id, email, name, Role.USER, false);
+                return new TokenResponse(accessToken, email, name, false);
+            }
+
+            TokenPair tokens = issueTokensOnLogin(id, email, name, Role.USER, true);
             return new TokenResponse(tokens.accessToken(), tokens.refreshToken(), tokens.sessionId(), tokens.familyId(), email, name, isSignUpCompleted);
         } catch (Exception e) {
             throw new RuntimeException("소셜 로그인 실패: " + e.getMessage(), e);

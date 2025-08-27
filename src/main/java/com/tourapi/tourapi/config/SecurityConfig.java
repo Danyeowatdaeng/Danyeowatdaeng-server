@@ -22,7 +22,9 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests((authz) -> authz
                 // 공개 엔드포인트
-                .requestMatchers("/api/terms/current", "/api/terms/{code}").permitAll()
+                .requestMatchers("/api/terms/current", "/api/terms/*").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 // 인증이 필요한 엔드포인트
@@ -31,7 +33,7 @@ public class SecurityConfig {
         );
 
         http.csrf(csrf -> csrf.disable())
-            .headers(headers -> headers.disable())
+            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
             .sessionManagement((session) -> session
                     .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

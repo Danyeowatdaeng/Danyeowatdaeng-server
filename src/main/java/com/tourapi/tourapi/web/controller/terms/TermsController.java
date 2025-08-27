@@ -15,7 +15,7 @@ import com.tourapi.tourapi.terms.service.TermsService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -57,13 +57,10 @@ public class TermsController {
             value = TermsErrorStatus.class,
             codes = {"TERMS_NOT_FOUND", "TERMS_ALREADY_AGREED", "TERMS_VERSION_MISMATCH", "TERMS_AGREEMENT_REQUIRED"}
     )
-    public ResponseEntity<ApiResponse<Void>> agreeTerms(@RequestBody TermsAgreementRequest request) {
-        // Spring Security의 인증 컨텍스트 사용
-        UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
-            .getAuthentication().getPrincipal();
-        
+    public ResponseEntity<ApiResponse<Void>> agreeTerms(@RequestBody TermsAgreementRequest request,
+                                                        @AuthenticationPrincipal UserPrincipal principal) {
         // 인증된 사용자의 Member 정보 조회
-        Member member = memberService.getAuthenticatedMember(userPrincipal.getId());
+        Member member = memberService.getAuthenticatedMember(principal.getId());
             
         termsService.agreeTerms(member, request.getTermsCodes());
         return ApiResponse.onSuccess(TermsSuccessStatus.TERMS_AGREED);
@@ -75,17 +72,9 @@ public class TermsController {
             value = TermsErrorStatus.class,
             codes = {"TERMS_NOT_FOUND"}
     )
-    public ResponseEntity<ApiResponse<Map<TermsCode, Boolean>>> getAgreementStatus() {
-        UserPrincipal userPrincipal = (UserPrincipal) SecurityContextHolder.getContext()
-            .getAuthentication().getPrincipal();
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal)) {
-            throw new GeneralException(MemberErrorStatus.UNAUTHORIZED);
-        }
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-            
-            
-        Map<TermsCode, Boolean> status = termsService.getMemberTermsAgreementStatus(userPrincipal.getId());
+    public ResponseEntity<ApiResponse<Map<TermsCode, Boolean>>> getAgreementStatus(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        Map<TermsCode, Boolean> status = termsService.getMemberTermsAgreementStatus(principal.getId());
         return ApiResponse.onSuccess(TermsSuccessStatus.AGREEMENT_STATUS_FOUND, status);
     }
 }

@@ -1,20 +1,31 @@
 package com.tourapi.tourapi.web.controller.petAvatar;
 
-import com.tourapi.tourapi.auth.jwt.JwtProvider;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.tourapi.tourapi.auth.jwt.UserPrincipal;
+import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
+import com.tourapi.tourapi.common.exception.ApiResponse;
+import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
+import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
+import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarSuccessStatus;
 import com.tourapi.tourapi.petAvatar.dto.PetAvatarListResponse;
 import com.tourapi.tourapi.petAvatar.dto.PetAvatarResponse;
 import com.tourapi.tourapi.petAvatar.enums.PetAvatarStyle;
 import com.tourapi.tourapi.petAvatar.enums.PetType;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
+
+import io.swagger.v3.oas.annotations.Operation;
+// no-op
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/pet-avatars")
@@ -23,127 +34,118 @@ import java.util.stream.Collectors;
 public class PetAvatarController {
 
     private final PetAvatarService petAvatarService;
-    private final JwtProvider jwtProvider;
 
     // PetAvatar 목록 조회 (기본 + 커스텀)
     @GetMapping
-    public ResponseEntity<PetAvatarListResponse> getAllPetAvatars(HttpServletRequest request) {
-        Long memberId = getMemberIdFromRequest(request);
-        
+    @Operation(summary = "PetAvatar 목록 조회", description = "사용자가 선택 가능한 기본+커스텀 PetAvatar 목록을 조회합니다.")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001", "PET4002"}) // NOT_FOUND, INACTIVE (간접 가능성)
+    public ResponseEntity<ApiResponse<PetAvatarListResponse>> getAllPetAvatars(@AuthenticationPrincipal UserPrincipal principal) {
+        Long memberId = principal.getId();
+
         List<PetAvatarResponse> petAvatars = petAvatarService.getAvailablePetAvatarsForMember(memberId)
                 .stream()
                 .map(PetAvatarResponse::from)
                 .collect(Collectors.toList());
-        
+
         PetAvatarListResponse response = PetAvatarListResponse.from(petAvatars);
-        
+
         log.info("PetAvatar list retrieved for member {}: {} items", memberId, petAvatars.size());
-        return ResponseEntity.ok(response);
+        return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_LIST_FOUND, response);
     }
 
     // 기본 PetAvatar만 조회
     @GetMapping("/default")
-    public ResponseEntity<PetAvatarListResponse> getDefaultPetAvatars() {
+    @Operation(summary = "기본 PetAvatar 목록 조회", description = "커스텀을 제외한 기본 PetAvatar 목록을 조회합니다.")
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001"}) // 조회 중 개별 Not Found 가능성
+    public ResponseEntity<ApiResponse<PetAvatarListResponse>> getDefaultPetAvatars() {
         List<PetAvatarResponse> petAvatars = petAvatarService.getDefaultPetAvatars()
                 .stream()
                 .map(PetAvatarResponse::from)
                 .collect(Collectors.toList());
-        
+
         PetAvatarListResponse response = PetAvatarListResponse.from(petAvatars);
-        
+
         log.info("Default PetAvatar list retrieved: {} items", petAvatars.size());
-        return ResponseEntity.ok(response);
+        return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_LIST_FOUND, response);
     }
 
     // 특정 타입 PetAvatar 조회
     @GetMapping("/{petType}")
-    public ResponseEntity<PetAvatarListResponse> getPetAvatarsByType(
+    @Operation(summary = "타입별 PetAvatar 목록 조회", description = "특정 PetType에 해당하는 PetAvatar 목록을 조회합니다.")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001"})
+    public ResponseEntity<ApiResponse<PetAvatarListResponse>> getPetAvatarsByType(
             @PathVariable PetType petType,
-            HttpServletRequest request) {
-        Long memberId = getMemberIdFromRequest(request);
-        
+            @AuthenticationPrincipal UserPrincipal principal) {
+        Long memberId = principal.getId();
+
         List<PetAvatarResponse> petAvatars = petAvatarService.getAvailablePetAvatarsForMemberByType(memberId, petType)
                 .stream()
                 .map(PetAvatarResponse::from)
                 .collect(Collectors.toList());
-        
+
         PetAvatarListResponse response = PetAvatarListResponse.from(petAvatars);
-        
+
         log.info("PetAvatar list retrieved for type {} and member {}: {} items", petType, memberId, petAvatars.size());
-        return ResponseEntity.ok(response);
+        return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_LIST_FOUND, response);
     }
 
     // 사용자 커스텀 PetAvatar 조회
     @GetMapping("/custom")
-    public ResponseEntity<PetAvatarListResponse> getCustomPetAvatars(HttpServletRequest request) {
-        Long memberId = getMemberIdFromRequest(request);
-        
+    @Operation(summary = "커스텀 PetAvatar 목록 조회", description = "사용자가 생성한 커스텀 PetAvatar 목록을 조회합니다.")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
+    public ResponseEntity<ApiResponse<PetAvatarListResponse>> getCustomPetAvatars(@AuthenticationPrincipal UserPrincipal principal) {
+        Long memberId = principal.getId();
+
         List<PetAvatarResponse> petAvatars = petAvatarService.getCustomPetAvatarsByMemberId(memberId)
                 .stream()
                 .map(PetAvatarResponse::from)
                 .collect(Collectors.toList());
-        
+
         PetAvatarListResponse response = PetAvatarListResponse.from(petAvatars);
-        
+
         log.info("Custom PetAvatar list retrieved for member {}: {} items", memberId, petAvatars.size());
-        return ResponseEntity.ok(response);
+        return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_LIST_FOUND, response);
     }
 
     // 스타일별 PetAvatar 조회
     @GetMapping("/style/{style}")
-    public ResponseEntity<PetAvatarListResponse> getPetAvatarsByStyle(@PathVariable PetAvatarStyle style) {
+    @Operation(summary = "스타일별 PetAvatar 목록 조회", description = "지정한 스타일의 PetAvatar 목록을 조회합니다.")
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001"})
+    public ResponseEntity<ApiResponse<PetAvatarListResponse>> getPetAvatarsByStyle(@PathVariable PetAvatarStyle style) {
         List<PetAvatarResponse> petAvatars = petAvatarService.getPetAvatarsByStyle(style)
                 .stream()
                 .map(PetAvatarResponse::from)
                 .collect(Collectors.toList());
-        
+
         PetAvatarListResponse response = PetAvatarListResponse.from(petAvatars);
-        
+
         log.info("PetAvatar list retrieved for style {}: {} items", style, petAvatars.size());
-        return ResponseEntity.ok(response);
+        return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_LIST_FOUND, response);
     }
 
     // ID로 PetAvatar 조회
     @GetMapping("/id/{id}")
-    public ResponseEntity<PetAvatarResponse> getPetAvatarById(@PathVariable Long id) {
+    @Operation(summary = "PetAvatar 상세 조회 (ID)", description = "ID로 PetAvatar 상세 정보를 조회합니다.")
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001"})
+    public ResponseEntity<ApiResponse<PetAvatarResponse>> getPetAvatarById(@PathVariable Long id) {
         PetAvatarResponse response = PetAvatarResponse.from(petAvatarService.getPetAvatarById(id));
-        
+
         log.info("PetAvatar retrieved by id: {}", id);
-        return ResponseEntity.ok(response);
+        return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_DETAIL_FOUND, response);
     }
 
     // 코드로 PetAvatar 조회
     @GetMapping("/code/{code}")
-    public ResponseEntity<PetAvatarResponse> getPetAvatarByCode(@PathVariable String code) {
+    @Operation(summary = "PetAvatar 상세 조회 (CODE)", description = "코드로 PetAvatar 상세 정보를 조회합니다.")
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001"})
+    public ResponseEntity<ApiResponse<PetAvatarResponse>> getPetAvatarByCode(@PathVariable String code) {
         PetAvatarResponse response = PetAvatarResponse.from(petAvatarService.getPetAvatarByCode(code));
-        
+
         log.info("PetAvatar retrieved by code: {}", code);
-        return ResponseEntity.ok(response);
+        return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_DETAIL_FOUND, response);
     }
 
-    // AI 확장용: 이미지 업로드 (향후 구현)
-    @PostMapping("/upload")
-    public ResponseEntity<String> uploadImage() {
-        // TODO: AI 확장 시 구현
-        return ResponseEntity.ok("Upload functionality will be implemented in Phase 5");
-    }
-
-    // AI 확장용: AI 변환 요청 (향후 구현)
-    @PostMapping("/convert")
-    public ResponseEntity<String> convertImage() {
-        // TODO: AI 확장 시 구현
-        return ResponseEntity.ok("Convert functionality will be implemented in Phase 5");
-    }
-
-    // AI 확장용: 변환 상태 조회 (향후 구현)
-    @GetMapping("/convert/{requestId}")
-    public ResponseEntity<String> getConvertStatus(@PathVariable String requestId) {
-        // TODO: AI 확장 시 구현
-        return ResponseEntity.ok("Convert status functionality will be implemented in Phase 5");
-    }
-
-    private Long getMemberIdFromRequest(HttpServletRequest request) {
-        String token = jwtProvider.resolveToken(request);
-        return jwtProvider.getMemberId(token);
-    }
+    // JwtAuthenticationFilter 가 SecurityContext 에 주입한 UserPrincipal 을 직접 사용합니다.
 }
