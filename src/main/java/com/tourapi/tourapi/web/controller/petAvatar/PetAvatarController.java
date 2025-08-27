@@ -22,6 +22,7 @@ import com.tourapi.tourapi.petAvatar.enums.PetType;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 // no-op
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -40,9 +41,12 @@ public class PetAvatarController {
     // PetAvatar 목록 조회 (기본 + 커스텀)
     @GetMapping
     @Operation(summary = "PetAvatar 목록 조회", description = "사용자가 선택 가능한 기본+커스텀 PetAvatar 목록을 조회합니다.")
+    @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
     @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001", "PET4002"}) // NOT_FOUND, INACTIVE (간접 가능성)
     public ResponseEntity<ApiResponse<PetAvatarListResponse>> getAllPetAvatars(@AuthenticationPrincipal UserPrincipal principal) {
+        
+        
         Long memberId = principal.getId();
 
         List<PetAvatarResponse> petAvatars = petAvatarService.getAvailablePetAvatarsForMember(memberId)
@@ -75,11 +79,13 @@ public class PetAvatarController {
     // 특정 타입 PetAvatar 조회
     @GetMapping("/{petType}")
     @Operation(summary = "타입별 PetAvatar 목록 조회", description = "특정 PetType에 해당하는 PetAvatar 목록을 조회합니다.")
+    @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001"})
     public ResponseEntity<ApiResponse<PetAvatarListResponse>> getPetAvatarsByType(
             @PathVariable PetType petType,
             @AuthenticationPrincipal UserPrincipal principal) {
+        
         Long memberId = principal.getId();
 
         List<PetAvatarResponse> petAvatars = petAvatarService.getAvailablePetAvatarsForMemberByType(memberId, petType)
@@ -96,8 +102,10 @@ public class PetAvatarController {
     // 사용자 커스텀 PetAvatar 조회
     @GetMapping("/custom")
     @Operation(summary = "커스텀 PetAvatar 목록 조회", description = "사용자가 생성한 커스텀 PetAvatar 목록을 조회합니다.")
+    @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     public ResponseEntity<ApiResponse<PetAvatarListResponse>> getCustomPetAvatars(@AuthenticationPrincipal UserPrincipal principal) {
+        
         Long memberId = principal.getId();
 
         List<PetAvatarResponse> petAvatars = petAvatarService.getCustomPetAvatarsByMemberId(memberId)

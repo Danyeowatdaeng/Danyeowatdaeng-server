@@ -13,6 +13,7 @@ import com.tourapi.tourapi.terms.dto.TermsAgreementRequest;
 import com.tourapi.tourapi.terms.service.TermsService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -55,12 +56,14 @@ public class TermsController {
     
     @PostMapping("/agree-terms")
     @Operation(summary = "02. 약관 동의", description = "필수 약관에 동의합니다.", tags = {"회원가입 플로우"})
+    @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(
             value = TermsErrorStatus.class,
             codes = {"TERMS_NOT_FOUND", "TERMS_ALREADY_AGREED", "TERMS_VERSION_MISMATCH", "TERMS_AGREEMENT_REQUIRED"}
     )
     public ResponseEntity<ApiResponse<Void>> agreeTerms(@RequestBody TermsAgreementRequest request,
                                                         @AuthenticationPrincipal UserPrincipal principal) {
+        
         // 인증된 사용자의 Member 정보 조회
         Member member = memberService.getAuthenticatedMember(principal.getId());
             
@@ -76,6 +79,7 @@ public class TermsController {
     )
     public ResponseEntity<ApiResponse<Map<TermsCode, Boolean>>> getAgreementStatus(
             @AuthenticationPrincipal UserPrincipal principal) {
+        
         Map<TermsCode, Boolean> status = termsService.getMemberTermsAgreementStatus(principal.getId());
         return ApiResponse.onSuccess(TermsSuccessStatus.AGREEMENT_STATUS_FOUND, status);
     }

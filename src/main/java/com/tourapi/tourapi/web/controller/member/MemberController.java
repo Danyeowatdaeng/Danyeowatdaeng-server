@@ -19,6 +19,7 @@ import com.tourapi.tourapi.petAvatar.dto.PetAvatarSelectionRequest;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
@@ -38,6 +39,7 @@ public class MemberController {
     // PetAvatar 선택
     @PostMapping("/pet-avatar")
     @Operation(summary = "03. PetAvatar 선택", description = "회원가입 과정에서 사용자의 PetAvatar를 선택합니다.", tags = {"회원가입 플로우"})
+    @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // 인증 필요
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"}) // MEMBER_NOT_FOUND
     public ResponseEntity<ApiResponse<Void>> selectPetAvatar(
@@ -55,6 +57,7 @@ public class MemberController {
     // 회원가입 완료
     @PostMapping("/complete-signup")
     @Operation(summary = "04. 회원가입 완료", description = "PetAvatar 선택 완료 후 회원가입을 완료합니다.", tags = {"회원가입 플로우"})
+    @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4050"}) // PET_AVATAR_NOT_SELECTED
     public ResponseEntity<ApiResponse<Void>> completeSignup(@AuthenticationPrincipal UserPrincipal principal) {
@@ -69,6 +72,7 @@ public class MemberController {
     // 회원 정보 조회
     @GetMapping("/me")
     @Operation(summary = "내 정보 조회", description = "현재 로그인한 회원 정보를 조회합니다.")
+    @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
     public ResponseEntity<ApiResponse<Member>> getMemberInfo(@AuthenticationPrincipal UserPrincipal principal) {
