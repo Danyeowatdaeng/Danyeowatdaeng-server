@@ -15,6 +15,7 @@ import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
 import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
 import com.tourapi.tourapi.common.exception.member.status.MemberSuccessStatus;
 import com.tourapi.tourapi.member.Member;
+import com.tourapi.tourapi.member.dto.MemberResponse;
 import com.tourapi.tourapi.member.service.MemberService;
 import com.tourapi.tourapi.petAvatar.dto.PetAvatarSelectionRequest;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
@@ -81,7 +82,7 @@ public class MemberController {
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    public ResponseEntity<ApiResponse<Member>> getMemberInfo(@AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<ApiResponse<MemberResponse>> getMemberInfo(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) {
             return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
         }
@@ -89,9 +90,10 @@ public class MemberController {
         Long memberId = principal.getId();
 
         Member member = memberService.getMemberById(memberId);
+        MemberResponse response = MemberResponse.from(member);
 
         log.info("Member info retrieved for member {}", memberId);
-        return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_INFO_FETCHED, member);
+        return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_INFO_FETCHED, response);
     }
 
 
