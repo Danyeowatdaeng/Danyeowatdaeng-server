@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.tourapi.tourapi.auth.dto.TokenResponse;
+import com.tourapi.tourapi.auth.enums.OauthProvider;
 import com.tourapi.tourapi.auth.jwt.JwtProvider;
 import com.tourapi.tourapi.auth.oauth.SocialTokenVerifier;
 import com.tourapi.tourapi.auth.token.RefreshTokenStore;
