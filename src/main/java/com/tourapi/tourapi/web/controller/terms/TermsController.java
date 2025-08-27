@@ -13,6 +13,7 @@ import com.tourapi.tourapi.terms.dto.TermsAgreementRequest;
 import com.tourapi.tourapi.terms.service.TermsService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,6 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/terms")
 @RequiredArgsConstructor
+@Tag(name = "Terms")
 public class TermsController {
     
     private final TermsService termsService;
@@ -52,7 +54,7 @@ public class TermsController {
     }
     
     @PostMapping("/agree-terms")
-    @Operation(summary = "약관 동의", description = "필수 약관에 동의합니다.")
+    @Operation(summary = "02. 약관 동의", description = "필수 약관에 동의합니다.", tags = {"회원가입 플로우"})
     @ApiErrorCodeExample(
             value = TermsErrorStatus.class,
             codes = {"TERMS_NOT_FOUND", "TERMS_ALREADY_AGREED", "TERMS_VERSION_MISMATCH", "TERMS_AGREEMENT_REQUIRED"}

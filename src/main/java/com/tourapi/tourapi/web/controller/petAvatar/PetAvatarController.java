@@ -22,6 +22,7 @@ import com.tourapi.tourapi.petAvatar.enums.PetType;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 // no-op
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/api/pet-avatars")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "PetAvatar")
 public class PetAvatarController {
 
     private final PetAvatarService petAvatarService;

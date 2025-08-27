@@ -20,9 +20,11 @@ import com.tourapi.tourapi.common.exception.token.status.TokenSuccessStatus;
 import com.tourapi.tourapi.common.exception.member.status.MemberSuccessStatus;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Auth")
 public class AuthController {
 
     private final RefreshTokenStore store;
@@ -57,8 +59,10 @@ public class AuthController {
 
     @PostMapping("/login/social")
     @Operation(
-            summary = "소셜 로그인 및 회원가입",
-            description = "가입되어 있는 경우는 액세스/리프레시 주고, 안되어있으면 액세스만 줍니다. 판단은 isSignUpCompleted로"
+            summary = "01. 소셜 로그인 및 회원가입",
+            description = "가입되어 있는 경우는 액세스/리프레시 주고, 안되어있으면 액세스만 줍니다. 판단은 isSignUpCompleted로",
+            tags = {"회원가입 플로우"},
+            operationId = "01-social-login"
     )
     public ResponseEntity<ApiResponse<TokenResponse>> socialLogin(@RequestBody SocialLoginRequest body) {
         try {
