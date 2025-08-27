@@ -45,7 +45,9 @@ public class PetAvatarController {
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
     @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4001", "PET4002"}) // NOT_FOUND, INACTIVE (간접 가능성)
     public ResponseEntity<ApiResponse<PetAvatarListResponse>> getAllPetAvatars(@AuthenticationPrincipal UserPrincipal principal) {
-        
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
         
         Long memberId = principal.getId();
 
@@ -86,6 +88,9 @@ public class PetAvatarController {
             @PathVariable PetType petType,
             @AuthenticationPrincipal UserPrincipal principal) {
         
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
         Long memberId = principal.getId();
 
         List<PetAvatarResponse> petAvatars = petAvatarService.getAvailablePetAvatarsForMemberByType(memberId, petType)
@@ -105,6 +110,9 @@ public class PetAvatarController {
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     public ResponseEntity<ApiResponse<PetAvatarListResponse>> getCustomPetAvatars(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
         
         Long memberId = principal.getId();
 

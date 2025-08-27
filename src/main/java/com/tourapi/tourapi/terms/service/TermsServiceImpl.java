@@ -9,7 +9,7 @@ import com.tourapi.tourapi.member.repository.MemberRepository;
 import com.tourapi.tourapi.terms.TermsAgreement;
 import com.tourapi.tourapi.terms.TermsCode;
 import com.tourapi.tourapi.terms.TermsDocument;
-import com.tourapi.tourapi.term.repository.TermsAgreementRepository;
+import com.tourapi.tourapi.terms.repository.TermsAgreementRepository;
 import com.tourapi.tourapi.terms.repository.TermsDocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

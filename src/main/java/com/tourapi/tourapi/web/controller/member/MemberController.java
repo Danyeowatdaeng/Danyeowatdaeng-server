@@ -82,6 +82,10 @@ public class MemberController {
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
     public ResponseEntity<ApiResponse<Member>> getMemberInfo(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+
         Long memberId = principal.getId();
 
         Member member = memberService.getMemberById(memberId);

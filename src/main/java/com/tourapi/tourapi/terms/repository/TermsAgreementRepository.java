@@ -1,4 +1,4 @@
-package com.tourapi.tourapi.term.repository;
+package com.tourapi.tourapi.terms.repository;
 
 import java.util.List;
 import java.util.Optional;
