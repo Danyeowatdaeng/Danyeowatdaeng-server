@@ -2,6 +2,8 @@ package com.tourapi.tourapi.petAvatar.service;
 
 import com.tourapi.tourapi.common.exception.petAvatar.PetAvatarHandler;
 import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
+import com.tourapi.tourapi.common.exception.member.MemberHandler;
+import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
 import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.repository.MemberRepository;
 import com.tourapi.tourapi.petAvatar.PetAvatar;
@@ -76,7 +78,7 @@ public class PetAvatarServiceImpl implements PetAvatarService {
     @Transactional
     public void selectPetAvatarForMember(Long memberId, Long petAvatarId) {
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new IllegalArgumentException("Member not found with id: " + memberId));
+                .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
         
         PetAvatar petAvatar = getPetAvatarById(petAvatarId);
         

@@ -12,6 +12,7 @@ import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
 import com.tourapi.tourapi.common.exception.ApiResponse;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
+import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
 import com.tourapi.tourapi.common.exception.member.status.MemberSuccessStatus;
 import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.service.MemberService;
@@ -45,7 +46,9 @@ public class MemberController {
     public ResponseEntity<ApiResponse<Void>> selectPetAvatar(
             @Valid @RequestBody PetAvatarSelectionRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
         Long memberId = principal.getId();
 
         petAvatarService.selectPetAvatarForMember(memberId, request.getPetAvatarId());
@@ -59,8 +62,11 @@ public class MemberController {
     @Operation(summary = "04. 회원가입 완료", description = "PetAvatar 선택 완료 후 회원가입을 완료합니다.", tags = {"회원가입 플로우"})
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4050"}) // PET_AVATAR_NOT_SELECTED
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4004"}) // PET_AVATAR_NOT_SELECTED
     public ResponseEntity<ApiResponse<Void>> completeSignup(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
         Long memberId = principal.getId();
 
         memberService.completeSignup(memberId);

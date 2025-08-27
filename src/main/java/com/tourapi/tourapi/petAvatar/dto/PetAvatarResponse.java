@@ -1,5 +1,6 @@
 package com.tourapi.tourapi.petAvatar.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.tourapi.tourapi.petAvatar.PetAvatar;
 import com.tourapi.tourapi.petAvatar.enums.PetAvatarStyle;
 import com.tourapi.tourapi.petAvatar.enums.PetType;
@@ -20,6 +21,7 @@ public class PetAvatarResponse {
     private Boolean isCustom;
     private String originalImageUrl;
     private PetAvatarStyle style;
+    @JsonIgnore
     private Long memberId;
     private LocalDateTime createdAt;
 

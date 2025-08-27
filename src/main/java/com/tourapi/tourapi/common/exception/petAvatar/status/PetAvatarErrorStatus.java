@@ -9,7 +9,8 @@ public enum PetAvatarErrorStatus implements ErrorResponse {
     PET_AVATAR_NOT_FOUND(HttpStatus.NOT_FOUND, "PET4001", "PetAvatar를 찾을 수 없습니다."),
     PET_AVATAR_INACTIVE(HttpStatus.BAD_REQUEST, "PET4002", "비활성화된 PetAvatar입니다."),
     PET_AVATAR_ALREADY_SELECTED(HttpStatus.BAD_REQUEST, "PET4003", "이미 PetAvatar가 선택되었습니다."),
-    PET_AVATAR_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PET4004", "커스텀 PetAvatar에 대한 접근 권한이 없습니다."),
+    PET_AVATAR_NOT_SELECTED(HttpStatus.BAD_REQUEST, "PET4004", "PetAvatar가 선택되지 않았습니다."),
+    PET_AVATAR_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PET4005", "커스텀 PetAvatar에 대한 접근 권한이 없습니다."),
 
     // AI 확장용 에러 상태
     PET_AVATAR_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "PET4010", "이미지 업로드에 실패했습니다."),

@@ -2,6 +2,8 @@ package com.tourapi.tourapi.member.service;
 
 import com.tourapi.tourapi.common.exception.member.MemberHandler;
 import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
+import com.tourapi.tourapi.common.exception.petAvatar.PetAvatarHandler;
+import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
 import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +42,7 @@ public class MemberServiceImpl implements MemberService {
         
         // PetAvatar가 선택되었는지 확인
         if (member.getPetAvatar() == null) {
-            throw new MemberHandler(MemberErrorStatus.PET_AVATAR_NOT_SELECTED);
+            throw new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_NOT_SELECTED);
         }
         
         member.setSignUpCompleted(true);
