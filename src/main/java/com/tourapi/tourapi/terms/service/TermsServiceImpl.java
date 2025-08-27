@@ -1,8 +1,9 @@
 package com.tourapi.tourapi.terms.service;
 
 import com.tourapi.tourapi.auth.enums.OauthProvider;
-import com.tourapi.tourapi.common.exception.general.GeneralException;
+import com.tourapi.tourapi.common.exception.member.MemberHandler;
 import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
+import com.tourapi.tourapi.common.exception.terms.TermsHandler;
 import com.tourapi.tourapi.common.exception.terms.status.TermsErrorStatus;
 import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.repository.MemberRepository;
@@ -39,16 +40,29 @@ public class TermsServiceImpl implements TermsService {
     @Override
     public TermsDocument getCurrentTerms(TermsCode code) {
         return termsDocumentRepository.findCurrentVersionByCode(code)
-            .orElseThrow(() -> new GeneralException(TermsErrorStatus.TERMS_NOT_FOUND));
+            .orElseThrow(() -> new TermsHandler(TermsErrorStatus.TERMS_NOT_FOUND));
     }
     
     // 약관 동의 처리
     @Override
     public void agreeTerms(Member member, List<TermsCode> termsCodes) {
+        // 회원 상태 검증
+        if (member.getInactive() != null) {
+            throw new MemberHandler(MemberErrorStatus.ALREADY_INACTIVE);
+        }
+        
         LocalDateTime now = LocalDateTime.now();
         
         for (TermsCode termsCode : termsCodes) {
             TermsDocument termsDocument = getCurrentTerms(termsCode);
+            
+            // 이미 동의한 약관인지 확인
+            boolean alreadyAgreed = termsAgreementRepository.existsByMemberIdAndTermsCodeAndTermsVersionAndAgreedTrue(
+                member.getId(), termsCode, termsDocument.getVersion());
+            
+            if (alreadyAgreed) {
+                throw new TermsHandler(TermsErrorStatus.TERMS_ALREADY_AGREED);
+            }
             
             // 약관 동의 기록 생성
             TermsAgreement agreement = TermsAgreement.builder()

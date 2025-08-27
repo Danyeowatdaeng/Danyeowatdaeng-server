@@ -1,6 +1,5 @@
 package com.tourapi.tourapi.config;
 
-
 import com.tourapi.tourapi.auth.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -22,7 +21,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http.authorizeHttpRequests((authz) -> authz
-                .anyRequest().permitAll()
+                // 공개 엔드포인트
+                .requestMatchers("/api/terms/current", "/api/terms/{code}").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
+                // 인증이 필요한 엔드포인트
+                .requestMatchers("/api/terms/agree-terms", "/api/terms/agreement-status").authenticated()
+                .anyRequest().authenticated()
         );
 
         http.csrf(csrf -> csrf.disable())

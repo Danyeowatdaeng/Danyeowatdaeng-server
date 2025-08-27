@@ -14,7 +14,8 @@ import java.time.LocalDate;
     },
     indexes = {
         @Index(name = "idx_terms_document_code", columnList = "code"),
-        @Index(name = "idx_terms_document_effective_from", columnList = "effectiveFrom")
+        @Index(name = "idx_terms_document_effective_from", columnList = "effectiveFrom"),
+        @Index(name = "idx_terms_document_required_effective", columnList = "required, effectiveFrom, effectiveTo")
     }
 )
 @Getter
