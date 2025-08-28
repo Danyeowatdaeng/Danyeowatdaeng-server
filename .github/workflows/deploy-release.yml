@@ -44,25 +44,27 @@ jobs:
     runs-on: [ self-hosted ]
 
     steps:
-      - uses: actions/checkout@v4
+      # (필수) compose 파일 존재 체크
+      - name: Check compose file exists
+        run: test -f /home/ubuntu/docker-compose.yml || (echo "❌ /home/ubuntu/docker-compose.yml not found" && exit 1)
 
-      # 🔐 시크릿에서 멀티라인 .env를 복원
+      # 🔐 시크릿에서 멀티라인 .env 복원
       - name: Write .env file from secret
-        shell: bash
         run: |
-          # 개행/특수문자 보존을 위해 echo 대신 printf 사용
-          printf '%s' "${{ secrets.ENV_PROD }}" > .env
-          # (선택) 권한 제한
-          chmod 600 .env
+          sudo mkdir -p /home/ubuntu
+          printf '%s' "${{ secrets.ENV_PROD }}" | sudo tee /home/ubuntu/.env > /dev/null
+          sudo chmod 600 /home/ubuntu/.env
 
       - name: Compose down
+        working-directory: /home/ubuntu
         run: sudo docker compose --env-file .env down || true
 
       - name: Pull new image
         run: sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tourapi:latest
 
       - name: Compose up
-        run: sudo docker compose --env-file .env up -d
+        working-directory: /home/ubuntu
+        run: sudo docker compose --env-file .env up -d --remove-orphans
 
       - name: Prune old images
         run: sudo docker system prune -f
