@@ -4,7 +4,7 @@ import com.tourapi.tourapi.auth.enums.OauthProvider;
 import com.tourapi.tourapi.common.entity.BaseEntity;
 import com.tourapi.tourapi.member.enums.Role;
 import com.tourapi.tourapi.petAvatar.PetAvatar;
-import com.tourapi.tourapi.term.TermsAgreement;
+import com.tourapi.tourapi.terms.TermsAgreement;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -72,4 +72,8 @@ public class Member extends BaseEntity {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TermsAgreement> termsAgreements = new ArrayList<>();
+
+    // 명시적 게터 (일부 정적 분석기에서 Lombok 게터 인식 문제 보완)
+    public Long getId() { return id; }
+    public boolean isSignUpCompleted() { return isSignUpCompleted; }
 }

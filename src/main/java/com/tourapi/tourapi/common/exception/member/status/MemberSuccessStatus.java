@@ -12,6 +12,7 @@ public enum MemberSuccessStatus implements SuccessResponse {
     SIGN_OUT_SUCCESS(HttpStatus.OK, "MEMBER2002", "로그아웃이 완료되었습니다."),
     TERMS_AGREEMENT_REQUIRED(HttpStatus.OK, "MEMBER2003", "약관 동의가 필요합니다."),
     TERM_AGREEMENT_COMPLETED(HttpStatus.OK,"MEMBER2005" , "약관 동의가 완료되었습니다." ),
+    PET_SELECT_SUCCESS(HttpStatus.OK, "MEMBER2007", "펫 아바타가 정상적으로 설정되었습니다."),
     TERMS_URLS_FOUND(HttpStatus.FOUND,"MEMBER2006", "약관 버전이 조회되었습니다." ),
     // 길티프리
     GUILTY_FREE_SET(HttpStatus.OK, "MEMBER2010", "길티프리를 활성화하였습니다."),

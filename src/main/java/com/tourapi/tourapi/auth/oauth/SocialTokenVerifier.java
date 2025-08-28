@@ -28,13 +28,19 @@ public class SocialTokenVerifier {
 
     @Getter
     public static class SocialUserInfo {
+        private final String userId; // provider 고유 사용자 ID (subject 등)
         private final String email;
         private final String name;
 
-        public SocialUserInfo(String email, String name) {
+        public SocialUserInfo(String userId, String email, String name) {
+            this.userId = userId;
             this.email = email;
             this.name = name;
         }
+
+        public String getUserId() { return userId; }
+        public String getEmail() { return email; }
+        public String getName() { return name; }
     }
 
     public SocialUserInfo verify(String provider, String token) throws Exception {
@@ -63,7 +69,7 @@ public class SocialTokenVerifier {
         GoogleIdToken token = verifier.verify(idToken);
         if (token == null) throw new IllegalArgumentException("유효하지 않은 Google idToken");
         GoogleIdToken.Payload payload = token.getPayload();
-        return new SocialUserInfo(payload.getEmail(), (String) payload.get("name"));
+        return new SocialUserInfo(payload.getSubject(), payload.getEmail(), (String) payload.get("name"));
     }
 
     private SocialUserInfo verifyKakao(String accessToken) {
@@ -76,10 +82,12 @@ public class SocialTokenVerifier {
                 entity,
                 Map.class
         );
-        Map<String, Object> kakaoAccount = (Map<String, Object>) response.getBody().get("kakao_account");
+        Map<String, Object> body = response.getBody();
+        String id = String.valueOf(body.get("id"));
+        Map<String, Object> kakaoAccount = (Map<String, Object>) body.get("kakao_account");
         String email = (String) kakaoAccount.get("email");
         String name = (String) ((Map<String, Object>) kakaoAccount.get("profile")).get("nickname");
-        return new SocialUserInfo(email, name);
+        return new SocialUserInfo(id, email, name);
     }
 
     private SocialUserInfo verifyNaver(String accessToken) {
@@ -93,8 +101,9 @@ public class SocialTokenVerifier {
                 Map.class
         );
         Map<String, Object> responseMap = (Map<String, Object>) response.getBody().get("response");
+        String id = (String) responseMap.get("id");
         String email = (String) responseMap.get("email");
         String name = (String) responseMap.get("name");
-        return new SocialUserInfo(email, name);
+        return new SocialUserInfo(id, email, name);
     }
 }

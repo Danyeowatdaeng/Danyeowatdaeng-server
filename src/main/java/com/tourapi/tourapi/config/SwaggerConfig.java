@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springdoc.core.customizers.OperationCustomizer;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -75,6 +76,51 @@ public class SwaggerConfig {
                 return operation;
             }
         };
+    }
+
+    @Bean
+    public GroupedOpenApi signupFlowGroup() {
+        return GroupedOpenApi.builder()
+                .group("회원가입 플로우")
+                .pathsToMatch(
+                        "/api/auth/login/social",
+                        "/api/terms/agree-terms",
+                        "/api/members/pet-avatar",
+                        "/api/members/complete-signup"
+                )
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi petAvatarGroup() {
+        return GroupedOpenApi.builder()
+                .group("PetAvatar")
+                .pathsToMatch("/api/pet-avatars/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi membersGroup() {
+        return GroupedOpenApi.builder()
+                .group("Members")
+                .pathsToMatch("/api/members/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi termsGroup() {
+        return GroupedOpenApi.builder()
+                .group("Terms")
+                .pathsToMatch("/api/terms/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi authGroup() {
+        return GroupedOpenApi.builder()
+                .group("Auth")
+                .pathsToMatch("/api/auth/**")
+                .build();
     }
 
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {

@@ -1,6 +1,5 @@
 package com.tourapi.tourapi.terms.service;
 
-import com.tourapi.tourapi.auth.enums.OauthProvider;
 import com.tourapi.tourapi.common.exception.member.MemberHandler;
 import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
 import com.tourapi.tourapi.common.exception.terms.TermsHandler;

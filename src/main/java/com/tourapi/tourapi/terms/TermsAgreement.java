@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import com.tourapi.tourapi.common.entity.BaseEntity;
 import com.tourapi.tourapi.member.Member;
 
+import com.tourapi.tourapi.terms.TermsCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

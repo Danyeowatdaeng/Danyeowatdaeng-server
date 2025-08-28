@@ -35,6 +35,8 @@ public enum MemberErrorStatus implements ErrorResponse {
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER4030", "알림 설정이 존재하지 않습니다."),
     @ExplainError("필수 약관 파일이 존재하지 않음")
     TERM_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER4040", "필수 약관 파일이 존재하지 않습니다."),
+    
+
     ;
 
     private final HttpStatus httpStatus;
