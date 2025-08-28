@@ -1,0 +1,69 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQL8Dialect
+  data:
+    redis:
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 3000ms
+  logging:
+    level:
+      root: WARN
+      com.tourapi: INFO
+      org.springframework.web: WARN
+      org.hibernate.SQL: WARN
+      org.hibernate.type.descriptor.sql.BasicBinder: WARN
+
+logging:
+  level:
+    com.tourapi: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/tourapi.log
+    max-size: 100MB
+    max-history: 30
+
+jwt:
+  secret: ${JWT_SECRET:your-super-secret-key-that-should-be-long-and-secure-for-production}
+  expirationMs: 3600000 # 1시간 (밀리초) - 프로덕션에서는 더 짧게
+
+token:
+  hmac-secret: ${REFRESH_HMAC_SECRET:prod-change-me-please}
+
+server:
+  port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
