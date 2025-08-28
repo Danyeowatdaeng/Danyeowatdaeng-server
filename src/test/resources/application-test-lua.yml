@@ -1,0 +1,12 @@
+token:
+  store:
+    impl: lua
+  refresh:
+    ttl-seconds: 1209600
+  hmac-secret: test-refresh-hmac-secret
+
+spring:
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+
