@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,8 +25,6 @@ import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-// no-op
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -135,6 +134,8 @@ public class PetAvatarController {
         List<PetAvatarResponse> petAvatars = petAvatarService.getPetAvatarsByStyle(style)
                 .stream()
                 .map(PetAvatarResponse::from)
+                // 공개 엔드포인트: 커스텀 아바타 제외
+                .filter(r -> !Boolean.TRUE.equals(r.getIsCustom()))
                 .collect(Collectors.toList());
 
         PetAvatarListResponse response = PetAvatarListResponse.from(petAvatars);

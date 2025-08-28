@@ -73,11 +73,11 @@ public class AuthServiceImpl implements AuthService {
 
             // 가입 미완료면 액세스 토큰만 발급, 완료면 리프레시 포함 발급
             if (!isSignUpCompleted) {
-                String accessToken = jwtProvider.createAccessToken(id, email, name, Role.USER, false);
+                String accessToken = jwtProvider.createAccessToken(id, email, name, member.getRole(), false);
                 return new TokenResponse(accessToken, email, name, false);
             }
 
-            TokenPair tokens = issueTokensOnLogin(id, email, name, Role.USER, true);
+            TokenPair tokens = issueTokensOnLogin(id, email, name, member.getRole(), true);
             return new TokenResponse(tokens.accessToken(), tokens.refreshToken(), tokens.sessionId(), tokens.familyId(), email, name, isSignUpCompleted);
         } catch (Exception e) {
             throw new RuntimeException("소셜 로그인 실패: " + e.getMessage(), e);
