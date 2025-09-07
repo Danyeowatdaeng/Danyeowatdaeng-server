@@ -2,7 +2,7 @@ package com.tourapi.tourapi.map.client;
 
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import com.tourapi.tourapi.map.config.TourApiProperties;
+import com.tourapi.tourapi.config.TourApiProperties;
 import com.tourapi.tourapi.map.dto.ExternalTourApiResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

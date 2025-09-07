@@ -27,7 +27,7 @@ jwt:
 tour:
   api:
     base-url: http://apis.data.go.kr/B551011/KorPetTourService
-    service-key: ${TOUR_API_SERVICE_KEY:}
+    service-key: ${TOURAPI_SERVICE_KEY:}
     location-based-list-path: /locationBasedList
     search-keyword-path: /searchKeyword
     connection-timeout: 5000

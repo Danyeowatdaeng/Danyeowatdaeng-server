@@ -1,4 +1,4 @@
-package com.tourapi.tourapi.map.config;
+package com.tourapi.tourapi.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
