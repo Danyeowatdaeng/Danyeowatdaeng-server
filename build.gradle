@@ -55,6 +55,10 @@ dependencies {
 	implementation 'com.google.api-client:google-api-client:2.2.0'
 	implementation 'com.google.guava:guava:32.1.2-jre' // 최신 버전 명시
 	implementation 'com.google.http-client:google-http-client-jackson2:1.42.3'
+
+    // Gemini
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.springframework:spring-web'
 }
 
 tasks.named('test') {
