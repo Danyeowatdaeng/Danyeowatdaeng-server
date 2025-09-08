@@ -17,6 +17,8 @@ import com.tourapi.tourapi.common.exception.map.status.MapErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapSuccessStatus;
 import com.tourapi.tourapi.map.domain.TourLocation;
 import com.tourapi.tourapi.map.dto.DetailIntroResponse;
+import com.tourapi.tourapi.map.dto.DetailAggregate;
+import com.tourapi.tourapi.map.service.DetailAggregationService;
 import com.tourapi.tourapi.map.service.TourLocationService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class MapController {
 
     private final TourLocationService tourLocationService;
+    private final DetailAggregationService detailAggregationService;
 
 
     @GetMapping("/search/keyword")
@@ -83,6 +86,21 @@ public class MapController {
     ) {
         DetailIntroResponse detail = tourLocationService.getDetailIntro(contentId, contentTypeId);
         return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, detail);
+    }
+
+    @GetMapping("/detail")
+    @Operation(
+            summary = "상세 집계 조회",
+            description = "외부 detailIntro + 리뷰 요약/샘플 + (향후) 제휴 이벤트를 합쳐 제공하는 집계 응답"
+    )
+    @ApiErrorCodeExample(value = MapErrorStatus.class, codes = {"EXTERNAL_API_FAILURE", "INVALID_PARAMETER"})
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"INTERNAL_SERVER_ERROR"})
+    public ResponseEntity<ApiResponse<DetailAggregate>> getDetail(
+            @RequestParam(name = "contentId") Long contentId,
+            @RequestParam(name = "contentTypeId") Integer contentTypeId
+    ) {
+        DetailAggregate agg = detailAggregationService.getDetail(contentId, contentTypeId);
+        return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, agg);
     }
 }
 

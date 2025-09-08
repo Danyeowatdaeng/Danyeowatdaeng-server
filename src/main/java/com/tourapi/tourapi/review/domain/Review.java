@@ -21,8 +21,8 @@ public class Review {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "rating", nullable = false, precision = 3, scale = 1)
-    private Double rating;
+    @Column(name = "rating", nullable = false)
+    private Integer rating; // 1~5 정수 평점
 
     @Lob
     @Column(name = "content")
