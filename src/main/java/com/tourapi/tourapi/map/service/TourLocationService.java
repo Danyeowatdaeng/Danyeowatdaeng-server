@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.tourapi.tourapi.map.adapter.TourLocationAdapter;
 import com.tourapi.tourapi.map.domain.TourLocation;
+import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -42,6 +43,10 @@ public class TourLocationService {
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(loc -> haversine(centerLat, centerLng, loc.getLatitude(), loc.getLongitude())))
                 .toList();
+    }
+
+    public DetailIntroResponse getDetailIntro(Long contentId, Integer contentTypeId) {
+        return tourLocationAdapter.fetchDetailIntro(contentId, contentTypeId);
     }
 
     // 서비스 레벨에서는 반경 계산을 수행하지 않습니다 (클라이언트에서 계산).

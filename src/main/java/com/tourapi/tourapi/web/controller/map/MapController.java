@@ -16,6 +16,7 @@ import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapSuccessStatus;
 import com.tourapi.tourapi.map.domain.TourLocation;
+import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 import com.tourapi.tourapi.map.service.TourLocationService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,6 +67,22 @@ public class MapController {
     ) {
         List<TourLocation> results = tourLocationService.searchByBounds(swLat, swLng, neLat, neLng, category, zoomLevel);
         return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, results);
+    }
+
+    @GetMapping("/detail/intro")
+    @Operation(
+            summary = "상세 소개 조회(detailIntro)",
+            description = "contentId와 contentTypeId에 따라 상이한 상세 필드를 반환합니다. 예: 음식점(39)은 firstmenu, opentimefood 등."
+    )
+    @ApiErrorCodeExample(value = MapErrorStatus.class, codes = {"EXTERNAL_API_FAILURE", "INVALID_PARAMETER", "LOCATION_NOT_FOUND"})
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"INTERNAL_SERVER_ERROR"})
+    public ResponseEntity<ApiResponse<DetailIntroResponse>> getDetailIntro(
+            @RequestParam(name = "contentId") Long contentId,
+            @RequestParam(name = "contentTypeId") Integer contentTypeId,
+            @RequestParam(name = "json", defaultValue = "true") boolean json
+    ) {
+        DetailIntroResponse detail = tourLocationService.getDetailIntro(contentId, contentTypeId);
+        return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, detail);
     }
 }
 

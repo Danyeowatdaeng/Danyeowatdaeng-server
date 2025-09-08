@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import com.tourapi.tourapi.map.client.TourApiClient;
 import com.tourapi.tourapi.map.domain.TourLocation;
 import com.tourapi.tourapi.map.dto.ExternalTourApiResponse;
+import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 import com.tourapi.tourapi.map.mapper.TourLocationMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,10 @@ public class TourLocationAdapter {
                                                         Integer category, Integer zoomLevel, boolean useJson) {
         ExternalTourApiResponse response = tourApiClient.fetchTourDataByBounds(swLat, swLng, neLat, neLng, category, zoomLevel, useJson);
         return tourLocationMapper.toTourLocationList(response != null ? response.getItems() : null);
+    }
+
+    public DetailIntroResponse fetchDetailIntro(Long contentId, Integer contentTypeId) {
+        return tourApiClient.fetchDetailIntro(contentId, contentTypeId);
     }
 }
 

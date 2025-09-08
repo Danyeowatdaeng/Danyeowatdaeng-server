@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tourapi.tourapi.config.TourApiProperties;
 import com.tourapi.tourapi.map.dto.ExternalTourApiResponse;
 import com.tourapi.tourapi.map.dto.ExternalTourLocationDto;
+import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,6 +172,54 @@ public class TourApiClient {
         if (body == null) return null;
         int max = 1000;
         return body.length() <= max ? body : body.substring(0, max) + "...";
+    }
+
+    public DetailIntroResponse fetchDetailIntro(Long contentId, Integer contentTypeId) {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("MobileOS", "ETC");
+        params.add("MobileApp", "AppTest");
+        params.add("contentId", String.valueOf(contentId));
+        params.add("contentTypeId", String.valueOf(contentTypeId));
+
+        String requestUrl = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+                .path(properties.getDetailIntroPath())
+                .queryParams(params)
+                .queryParam("serviceKey", properties.getServiceKey())
+                .build(false)
+                .toUriString() + "&_type=json";
+        log.info("[TourAPI] GET {}", requestUrl);
+
+        String body = tourApiWebClient.get()
+                .uri(java.net.URI.create(requestUrl))
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            String resultCode = root.path("response").path("header").path("resultCode").asText();
+            if (!"0000".equals(resultCode)) {
+                return null; // 상위 계층에서 에러 매핑
+            }
+            JsonNode item = root.path("response").path("body").path("items").path("item");
+            if (item.isArray() && item.size() > 0) item = item.get(0);
+
+            java.util.Iterator<String> fields = item.fieldNames();
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            while (fields.hasNext()) {
+                String f = fields.next();
+                map.put(f, objectMapper.convertValue(item.path(f), Object.class));
+            }
+
+            return DetailIntroResponse.builder()
+                    .contentId(contentId)
+                    .contentTypeId(contentTypeId)
+                    .details(map)
+                    .build();
+        } catch (Exception e) {
+            log.error("[TourAPI] detailIntro parse error: {}", e.getMessage());
+            return null;
+        }
     }
 }
 
