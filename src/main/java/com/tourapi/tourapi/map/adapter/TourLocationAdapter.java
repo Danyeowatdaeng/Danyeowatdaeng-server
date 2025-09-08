@@ -29,6 +29,13 @@ public class TourLocationAdapter {
         ExternalTourApiResponse response = tourApiClient.fetchTourDataByKeyword(keyword, pageNo, size, useJson);
         return tourLocationMapper.toTourLocationList(response != null ? response.getItems() : null);
     }
+
+    public List<TourLocation> fetchTourLocationsByCategory(Integer category, Pageable pageable, boolean useJson) {
+        Integer pageNo = pageable != null ? pageable.getPageNumber() + 1 : null;
+        Integer size = pageable != null ? pageable.getPageSize() : null;
+        ExternalTourApiResponse response = tourApiClient.fetchTourDataByCategory(category, pageNo, size, useJson);
+        return tourLocationMapper.toTourLocationList(response != null ? response.getItems() : null);
+    }
 }
 
 

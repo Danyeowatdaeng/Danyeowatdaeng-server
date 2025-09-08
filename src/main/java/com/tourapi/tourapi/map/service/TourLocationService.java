@@ -24,6 +24,10 @@ public class TourLocationService {
         return tourLocationAdapter.fetchTourLocationsByKeyword(keyword, pageable, true);
     }
 
+    public List<TourLocation> findByCategory(Integer category, Pageable pageable) {
+        return tourLocationAdapter.fetchTourLocationsByCategory(category, pageable, true);
+    }
+
     public List<TourLocation> sortByDistance(List<TourLocation> locations, Double centerLat, Double centerLng) {
         if (locations == null) return List.of();
         return locations.stream()

@@ -12,6 +12,7 @@ public class TourApiProperties {
     private String serviceKey;
     private String locationBasedListPath = "/locationBasedList";
     private String searchKeywordPath = "/searchKeyword";
+    private String areaBasedListPath = "/areaBasedList";
     private int connectionTimeout = 5000;
     private int readTimeout = 10000;
     private int maxRetries = 3;

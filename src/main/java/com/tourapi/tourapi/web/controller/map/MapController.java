@@ -11,10 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -54,6 +51,20 @@ public class MapController {
     ) {
         List<TourLocation> results = tourLocationService.searchByKeyword(keyword, pageable);
         return ApiResponse.onSuccess(MapSuccessStatus.KEYWORD_SEARCH_SUCCESS, results);
+    }
+
+    @GetMapping("/search/category")
+    @Operation(
+            summary = "카테고리별 관광지 조회",
+            description = "카테고리(contentTypeId)로 관광지를 조회합니다. pageable 파라미터(page,size,sort) 이용 가능."
+    )
+    public ResponseEntity<ApiResponse<List<TourLocation>>> searchByCategory(
+            @RequestParam(name = "category") Integer category,
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(name = "json", defaultValue = "true") boolean json
+    ) {
+        List<TourLocation> results = tourLocationService.findByCategory(category, pageable);
+        return ApiResponse.onSuccess(MapSuccessStatus.CATEGORY_SEARCH_SUCCESS, results);
     }
 }
 

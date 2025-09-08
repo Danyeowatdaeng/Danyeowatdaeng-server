@@ -104,6 +104,44 @@ public class TourApiClient {
                 .block();
     }
 
+    public ExternalTourApiResponse fetchTourDataByCategory(Integer category, Integer pageNo, Integer numOfRows,
+                                                          boolean useJson) {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("MobileOS", "ETC");
+        params.add("MobileApp", "AppTest");
+        params.add("listYN", "Y");
+        params.add("arrange", "A");
+        if (category != null) params.add("contentTypeId", String.valueOf(category));
+        if (pageNo != null) params.add("pageNo", String.valueOf(pageNo));
+        if (numOfRows != null) params.add("numOfRows", String.valueOf(numOfRows));
+
+        String requestUrl = UriComponentsBuilder.fromHttpUrl(properties.getBaseUrl())
+                .path(properties.getAreaBasedListPath())
+                .queryParams(params)
+                .queryParam("serviceKey", properties.getServiceKey())
+                .build(false)
+                .toUriString() + "&_type=json";
+        log.info("[TourAPI] GET {}", requestUrl);
+
+        return tourApiWebClient.get()
+                .uri(java.net.URI.create(requestUrl))
+                .exchangeToMono(res -> {
+                    MediaType ct = res.headers().contentType().orElse(null);
+                    log.info("[TourAPI] Response status={}, contentType={}", res.statusCode(), ct);
+                    if (ct != null && ct.includes(MediaType.APPLICATION_JSON)) {
+                        return res.bodyToMono(String.class).map(body -> {
+                            log.info("[TourAPI] Response body(json)={}", snippet(body));
+                            return parseJsonResponse(body);
+                        });
+                    }
+                    return res.bodyToMono(String.class).map(body -> {
+                        log.warn("[TourAPI] Non-JSON response received ({}), body={}", ct, snippet(body));
+                        return new ExternalTourApiResponse();
+                    });
+                })
+                .block();
+    }
+
     private ExternalTourApiResponse parseJsonResponse(String json) {
         try {
             JsonNode root = objectMapper.readTree(json);
