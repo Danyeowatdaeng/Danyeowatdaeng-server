@@ -123,6 +123,22 @@ public class SwaggerConfig {
                 .build();
     }
 
+    @Bean
+    public GroupedOpenApi mapGroup() {
+        return GroupedOpenApi.builder()
+                .group("Map")
+                .pathsToMatch("/api/map/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi allGroup() {
+        return GroupedOpenApi.builder()
+                .group("All")
+                .pathsToMatch("/**")
+                .build();
+    }
+
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {
         if (enumClass == null || codes == null) return;
         try {
