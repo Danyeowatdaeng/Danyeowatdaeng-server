@@ -1,29 +1,26 @@
 package com.tourapi.tourapi.mypet.service;
 
-import com.tourapi.tourapi.common.exception.mypet.DiaryHandler;
-import com.tourapi.tourapi.common.exception.mypet.status.DiaryErrorStatus;
+import com.tourapi.tourapi.common.exception.diary.DiaryHandler;
+import com.tourapi.tourapi.common.exception.diary.status.DiaryErrorStatus;
 import com.tourapi.tourapi.common.exception.member.MemberHandler;
 import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
-import com.tourapi.tourapi.mypet.Diary;
-import com.tourapi.tourapi.mypet.dto.DiaryCreateRequest;
-import com.tourapi.tourapi.mypet.dto.DiaryListResponse;
-import com.tourapi.tourapi.mypet.dto.DiaryResponse;
-import com.tourapi.tourapi.mypet.dto.DiaryUpdateRequest;
-import com.tourapi.tourapi.mypet.repository.DiaryRepository;
 import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.repository.MemberRepository;
+import com.tourapi.tourapi.mypet.Diary;
+import com.tourapi.tourapi.mypet.dto.DiaryCreateRequest;
+import com.tourapi.tourapi.mypet.dto.DiaryUpdateRequest;
+import com.tourapi.tourapi.mypet.enums.DiaryStatus;
+import com.tourapi.tourapi.mypet.repository.DiaryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,111 +33,92 @@ public class DiaryServiceImpl implements DiaryService {
 
     @Override
     @Transactional
-    public DiaryResponse createDiary(Long memberId, DiaryCreateRequest request) {
+    public Diary createDiary(Long memberId, DiaryCreateRequest request) {
         Member member = getMemberById(memberId);
 
-        Diary diary = Diary.builder()
-                .member(member)
-                .title(request.getTitle())
-                .content(request.getContent())
-                .imageUrl(request.getImageUrl())
-                .isActive(true)
-                .build();
+        Diary diary = Diary.create(
+                member,
+                request.getTitle(),
+                request.getContent(),
+                request.getImageUrl()
+        );
 
         Diary savedDiary = diaryRepository.save(diary);
         log.info("Diary created for member {}: {}", memberId, savedDiary.getId());
 
-        return DiaryResponse.from(savedDiary);
-    }
-
-    @Override
-    public DiaryListResponse getDiaries(Long memberId, Pageable pageable) {
-        Member member = getMemberById(memberId);
-
-        Page<Diary> diaryPage = diaryRepository.findByMemberIdAndIsActiveTrueOrderByCreatedAtDesc(memberId, pageable);
-
-        List<DiaryResponse> diaryResponses = diaryPage.getContent().stream()
-                .map(DiaryResponse::from)
-                .collect(Collectors.toList());
-
-        return DiaryListResponse.from(
-                diaryResponses,
-                (int) diaryPage.getTotalElements(),
-                diaryPage.hasNext(),
-                diaryPage.getNumber(),
-                diaryPage.getSize()
-        );
-    }
-
-    @Override
-    public List<DiaryResponse> getAllDiaries(Long memberId) {
-        Member member = getMemberById(memberId);
-
-        List<Diary> diaries = diaryRepository.findByMemberIdAndIsActiveTrueOrderByCreatedAtDesc(memberId);
-
-        return diaries.stream()
-                .map(DiaryResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public DiaryResponse getDiary(Long memberId, Long diaryId) {
-        Diary diary = getDiaryByIdAndMemberId(diaryId, memberId);
-        return DiaryResponse.from(diary);
+        return savedDiary;
     }
 
     @Override
     @Transactional
-    public DiaryResponse updateDiary(Long memberId, Long diaryId, DiaryUpdateRequest request) {
+    public Diary updateDiary(Long diaryId, Long memberId, DiaryUpdateRequest request) {
         Diary diary = getDiaryByIdAndMemberId(diaryId, memberId);
 
-        diary.updateDiary(request.getTitle(), request.getContent(), request.getImageUrl());
+        diary.updateDiary(
+                request.getTitle(),
+                request.getContent(),
+                request.getImageUrl()
+        );
 
-        Diary savedDiary = diaryRepository.save(diary);
+        Diary updatedDiary = diaryRepository.save(diary);
         log.info("Diary updated for member {}: {}", memberId, diaryId);
 
-        return DiaryResponse.from(savedDiary);
+        return updatedDiary;
     }
 
     @Override
     @Transactional
-    public void deleteDiary(Long memberId, Long diaryId) {
+    public void deleteDiary(Long diaryId, Long memberId) {
         Diary diary = getDiaryByIdAndMemberId(diaryId, memberId);
 
-        diary.deactivate();
+        diary.delete();
         diaryRepository.save(diary);
 
         log.info("Diary deleted for member {}: {}", memberId, diaryId);
     }
 
     @Override
-    public List<DiaryResponse> getDiariesByDateRange(Long memberId, LocalDate startDate, LocalDate endDate) {
-        Member member = getMemberById(memberId);
+    public List<Diary> getDiariesByMember(Long memberId) {
+        validateMemberExists(memberId);
+        return diaryRepository.findByMemberIdAndStatusOrderByCreatedAtDesc(memberId, DiaryStatus.ACTIVE);
+    }
 
-        LocalDateTime startDateTime = startDate.atStartOfDay();
-        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+    @Override
+    public Page<Diary> getDiariesByMember(Long memberId, Pageable pageable) {
+        validateMemberExists(memberId);
+        return diaryRepository.findByMemberIdAndStatusOrderByCreatedAtDesc(memberId, DiaryStatus.ACTIVE, pageable);
+    }
 
-        List<Diary> diaries = diaryRepository.findByMemberIdAndDateRange(memberId, startDateTime, endDateTime);
-
-        return diaries.stream()
-                .map(DiaryResponse::from)
-                .collect(Collectors.toList());
+    @Override
+    public Diary getDiaryDetail(Long diaryId, Long memberId) {
+        return getDiaryByIdAndMemberId(diaryId, memberId);
     }
 
     @Override
     public long getDiaryCount(Long memberId) {
-        Member member = getMemberById(memberId);
-        return diaryRepository.countByMemberIdAndIsActiveTrue(memberId);
+        validateMemberExists(memberId);
+        return diaryRepository.countByMemberIdAndStatus(memberId, DiaryStatus.ACTIVE);
     }
 
     @Override
-    public DiaryResponse getLatestDiary(Long memberId) {
-        Member member = getMemberById(memberId);
+    public List<Diary> getDiariesByDateRange(Long memberId, LocalDateTime startDate, LocalDateTime endDate) {
+        validateMemberExists(memberId);
+        return diaryRepository.findByMemberIdAndStatusAndCreatedAtBetween(
+                memberId, DiaryStatus.ACTIVE, startDate, endDate);
+    }
 
-        Diary diary = diaryRepository.findTopByMemberIdAndIsActiveTrueOrderByCreatedAtDesc(memberId)
-                .orElseThrow(() -> new DiaryHandler(DiaryErrorStatus.DIARY_NOT_FOUND));
+    @Override
+    public List<Diary> searchDiariesByTitle(Long memberId, String title) {
+        validateMemberExists(memberId);
+        return diaryRepository.findByMemberIdAndStatusAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(
+                memberId, DiaryStatus.ACTIVE, title);
+    }
 
-        return DiaryResponse.from(diary);
+    @Override
+    public List<Diary> getRecentDiaries(Long memberId, int limit) {
+        validateMemberExists(memberId);
+        Pageable pageable = PageRequest.of(0, limit);
+        return diaryRepository.findTopNByMemberIdAndStatus(memberId, DiaryStatus.ACTIVE, pageable);
     }
 
     // Private helper methods
@@ -149,8 +127,14 @@ public class DiaryServiceImpl implements DiaryService {
                 .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
     }
 
+    private void validateMemberExists(Long memberId) {
+        if (!memberRepository.existsById(memberId)) {
+            throw new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND);
+        }
+    }
+
     private Diary getDiaryByIdAndMemberId(Long diaryId, Long memberId) {
-        return diaryRepository.findByIdAndMemberIdAndIsActiveTrue(diaryId, memberId)
+        return diaryRepository.findByIdAndMemberIdAndStatus(diaryId, memberId, DiaryStatus.ACTIVE)
                 .orElseThrow(() -> new DiaryHandler(DiaryErrorStatus.DIARY_NOT_FOUND));
     }
 }

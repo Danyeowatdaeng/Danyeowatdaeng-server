@@ -3,10 +3,11 @@ package com.tourapi.tourapi.web.controller.mypet;
 import com.tourapi.tourapi.auth.jwt.UserPrincipal;
 import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
 import com.tourapi.tourapi.common.exception.ApiResponse;
-import com.tourapi.tourapi.common.exception.mypet.status.DiaryErrorStatus;
-import com.tourapi.tourapi.common.exception.mypet.status.DiarySuccessStatus;
+import com.tourapi.tourapi.common.exception.diary.status.DiaryErrorStatus;
+import com.tourapi.tourapi.common.exception.diary.status.DiarySuccessStatus;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
+import com.tourapi.tourapi.mypet.Diary;
 import com.tourapi.tourapi.mypet.dto.*;
 import com.tourapi.tourapi.mypet.service.DiaryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,15 +17,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/diaries")
@@ -35,12 +37,14 @@ public class DiaryController {
 
     private final DiaryService diaryService;
 
+    // 다이어리 생성
     @PostMapping
-    @Operation(summary = "다이어리 작성", description = "새로운 다이어리를 작성합니다.")
+    @Operation(summary = "다이어리 생성", description = "새로운 다이어리를 생성합니다.")
     @SecurityRequirement(name = "accessToken")
-    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    public ResponseEntity<ApiResponse<DiaryResponse>> createDiary(
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
+    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"}) // MEMBER_NOT_FOUND
+    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4004", "DIARY4005", "DIARY5001"})
+    public ResponseEntity<ApiResponse<DiaryDetailResponse>> createDiary(
             @Valid @RequestBody DiaryCreateRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
 
@@ -48,78 +52,21 @@ public class DiaryController {
             return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
         }
 
-        DiaryResponse response = diaryService.createDiary(principal.getId(), request);
+        Long memberId = principal.getId();
+        Diary diary = diaryService.createDiary(memberId, request);
+        DiaryDetailResponse response = DiaryDetailResponse.from(diary);
 
-        log.info("Diary created for member {}: {}", principal.getId(), response.getId());
+        log.info("Diary created for member {}: {}", memberId, diary.getId());
         return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_CREATED, response);
     }
 
-    @GetMapping
-    @Operation(summary = "다이어리 목록 조회", description = "사용자의 다이어리 목록을 페이징으로 조회합니다.")
-    @SecurityRequirement(name = "accessToken")
-    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    public ResponseEntity<ApiResponse<DiaryListResponse>> getDiaries(
-            @Parameter(description = "페이지 번호 (0부터 시작)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "10") int size,
-            @AuthenticationPrincipal UserPrincipal principal) {
-
-        if (principal == null) {
-            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
-        }
-
-        Pageable pageable = PageRequest.of(page, size);
-        DiaryListResponse response = diaryService.getDiaries(principal.getId(), pageable);
-
-        log.info("Diary list retrieved for member {}: {} items", principal.getId(), response.getTotalCount());
-        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_LIST_FOUND, response);
-    }
-
-    @GetMapping("/all")
-    @Operation(summary = "모든 다이어리 조회", description = "사용자의 모든 다이어리를 조회합니다.")
-    @SecurityRequirement(name = "accessToken")
-    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    public ResponseEntity<ApiResponse<List<DiaryResponse>>> getAllDiaries(
-            @AuthenticationPrincipal UserPrincipal principal) {
-
-        if (principal == null) {
-            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
-        }
-
-        List<DiaryResponse> response = diaryService.getAllDiaries(principal.getId());
-
-        log.info("All diaries retrieved for member {}: {} items", principal.getId(), response.size());
-        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_LIST_FOUND, response);
-    }
-
-    @GetMapping("/{diaryId}")
-    @Operation(summary = "다이어리 상세 조회", description = "특정 다이어리의 상세 정보를 조회합니다.")
-    @SecurityRequirement(name = "accessToken")
-    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4001"})
-    public ResponseEntity<ApiResponse<DiaryResponse>> getDiary(
-            @PathVariable Long diaryId,
-            @AuthenticationPrincipal UserPrincipal principal) {
-
-        if (principal == null) {
-            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
-        }
-
-        DiaryResponse response = diaryService.getDiary(principal.getId(), diaryId);
-
-        log.info("Diary retrieved for member {}: {}", principal.getId(), diaryId);
-        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_DETAIL_FOUND, response);
-    }
-
+    // 다이어리 수정
     @PutMapping("/{diaryId}")
     @Operation(summary = "다이어리 수정", description = "기존 다이어리를 수정합니다.")
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4001"})
-    public ResponseEntity<ApiResponse<DiaryResponse>> updateDiary(
+    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4001", "DIARY4002", "DIARY4004", "DIARY4005", "DIARY5002"})
+    public ResponseEntity<ApiResponse<DiaryDetailResponse>> updateDiary(
             @PathVariable Long diaryId,
             @Valid @RequestBody DiaryUpdateRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -128,18 +75,20 @@ public class DiaryController {
             return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
         }
 
-        DiaryResponse response = diaryService.updateDiary(principal.getId(), diaryId, request);
+        Long memberId = principal.getId();
+        Diary diary = diaryService.updateDiary(diaryId, memberId, request);
+        DiaryDetailResponse response = DiaryDetailResponse.from(diary);
 
-        log.info("Diary updated for member {}: {}", principal.getId(), diaryId);
+        log.info("Diary updated for member {}: {}", memberId, diaryId);
         return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_UPDATED, response);
     }
 
+    // 다이어리 삭제
     @DeleteMapping("/{diaryId}")
-    @Operation(summary = "다이어리 삭제", description = "다이어리를 삭제합니다.")
+    @Operation(summary = "다이어리 삭제", description = "다이어리를 삭제합니다. (소프트 삭제)")
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4001"})
+    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4001", "DIARY4002", "DIARY5003"})
     public ResponseEntity<ApiResponse<Void>> deleteDiary(
             @PathVariable Long diaryId,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -148,34 +97,88 @@ public class DiaryController {
             return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
         }
 
-        diaryService.deleteDiary(principal.getId(), diaryId);
+        Long memberId = principal.getId();
+        diaryService.deleteDiary(diaryId, memberId);
 
-        log.info("Diary deleted for member {}: {}", principal.getId(), diaryId);
+        log.info("Diary deleted for member {}: {}", memberId, diaryId);
         return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_DELETED);
     }
 
-    @GetMapping("/date-range")
-    @Operation(summary = "기간별 다이어리 조회", description = "특정 기간 내의 다이어리를 조회합니다.")
+    // 다이어리 목록 조회
+    @GetMapping
+    @Operation(summary = "다이어리 목록 조회", description = "사용자의 다이어리 목록을 조회합니다. (제목과 이미지 포함)")
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    public ResponseEntity<ApiResponse<List<DiaryResponse>>> getDiariesByDateRange(
-            @Parameter(description = "시작 날짜 (yyyy-MM-dd)") @RequestParam
-            @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-            @Parameter(description = "종료 날짜 (yyyy-MM-dd)") @RequestParam
-            @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+    public ResponseEntity<ApiResponse<DiaryListResponse>> getDiaries(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "10")
+            @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserPrincipal principal) {
 
         if (principal == null) {
             return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
         }
 
-        List<DiaryResponse> response = diaryService.getDiariesByDateRange(principal.getId(), startDate, endDate);
+        Long memberId = principal.getId();
 
-        log.info("Diaries by date range retrieved for member {}: {} items", principal.getId(), response.size());
-        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_LIST_FOUND, response);
+        if (size <= 0) {
+            // 페이징 없이 전체 조회
+            List<Diary> diaries = diaryService.getDiariesByMember(memberId);
+            List<DiaryResponse> diaryResponses = diaries.stream()
+                    .map(DiaryResponse::from)
+                    .collect(Collectors.toList());
+
+            DiaryListResponse response = DiaryListResponse.from(diaryResponses, diaryResponses.size());
+
+            log.info("All diaries retrieved for member {}: {} items", memberId, diaryResponses.size());
+            return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_LIST_FOUND, response);
+        } else {
+            // 페이징 조회
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Diary> diaryPage = diaryService.getDiariesByMember(memberId, pageable);
+
+            List<DiaryResponse> diaryResponses = diaryPage.getContent().stream()
+                    .map(DiaryResponse::from)
+                    .collect(Collectors.toList());
+
+            DiaryListResponse response = DiaryListResponse.from(
+                    diaryResponses,
+                    (int) diaryPage.getTotalElements(),
+                    diaryPage.hasNext(),
+                    diaryPage.getNumber(),
+                    diaryPage.getTotalPages()
+            );
+
+            log.info("Paged diaries retrieved for member {}: page {}, {} items", memberId, page, diaryResponses.size());
+            return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_LIST_FOUND, response);
+        }
     }
 
+    // 다이어리 상세 조회
+    @GetMapping("/{diaryId}")
+    @Operation(summary = "다이어리 상세 조회", description = "다이어리의 상세 정보를 조회합니다. (제목, 본문, 이미지, 작성시간 포함)")
+    @SecurityRequirement(name = "accessToken")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
+    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4001", "DIARY4002"})
+    public ResponseEntity<ApiResponse<DiaryDetailResponse>> getDiaryDetail(
+            @PathVariable Long diaryId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+
+        Long memberId = principal.getId();
+        Diary diary = diaryService.getDiaryDetail(diaryId, memberId);
+        DiaryDetailResponse response = DiaryDetailResponse.from(diary);
+
+        log.info("Diary detail retrieved for member {}: {}", memberId, diaryId);
+        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_DETAIL_FOUND, response);
+    }
+
+    // 다이어리 개수 조회
     @GetMapping("/count")
     @Operation(summary = "다이어리 개수 조회", description = "사용자의 총 다이어리 개수를 조회합니다.")
     @SecurityRequirement(name = "accessToken")
@@ -188,28 +191,64 @@ public class DiaryController {
             return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
         }
 
-        long count = diaryService.getDiaryCount(principal.getId());
+        Long memberId = principal.getId();
+        long count = diaryService.getDiaryCount(memberId);
 
-        log.info("Diary count retrieved for member {}: {}", principal.getId(), count);
+        log.info("Diary count retrieved for member {}: {}", memberId, count);
         return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_COUNT_FOUND, count);
     }
 
-    @GetMapping("/latest")
-    @Operation(summary = "최근 다이어리 조회", description = "가장 최근에 작성한 다이어리를 조회합니다.")
+    // 제목으로 다이어리 검색
+    @GetMapping("/search")
+    @Operation(summary = "다이어리 제목 검색", description = "제목으로 다이어리를 검색합니다.")
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
-    @ApiErrorCodeExample(value = DiaryErrorStatus.class, codes = {"DIARY4001"})
-    public ResponseEntity<ApiResponse<DiaryResponse>> getLatestDiary(
+    public ResponseEntity<ApiResponse<DiaryListResponse>> searchDiaries(
+            @Parameter(description = "검색할 제목", example = "산책")
+            @RequestParam String title,
             @AuthenticationPrincipal UserPrincipal principal) {
 
         if (principal == null) {
             return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
         }
 
-        DiaryResponse response = diaryService.getLatestDiary(principal.getId());
+        Long memberId = principal.getId();
+        List<Diary> diaries = diaryService.searchDiariesByTitle(memberId, title);
+        List<DiaryResponse> diaryResponses = diaries.stream()
+                .map(DiaryResponse::from)
+                .collect(Collectors.toList());
 
-        log.info("Latest diary retrieved for member {}: {}", principal.getId(), response.getId());
-        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_DETAIL_FOUND, response);
+        DiaryListResponse response = DiaryListResponse.from(diaryResponses, diaryResponses.size());
+
+        log.info("Diary search completed for member {}: query '{}', {} results", memberId, title, diaryResponses.size());
+        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_SEARCH_FOUND, response);
+    }
+
+    // 최근 다이어리 조회
+    @GetMapping("/recent")
+    @Operation(summary = "최근 다이어리 조회", description = "최근 작성한 다이어리를 조회합니다.")
+    @SecurityRequirement(name = "accessToken")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
+    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
+    public ResponseEntity<ApiResponse<DiaryListResponse>> getRecentDiaries(
+            @Parameter(description = "조회할 개수", example = "5")
+            @RequestParam(defaultValue = "5") int limit,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+
+        Long memberId = principal.getId();
+        List<Diary> diaries = diaryService.getRecentDiaries(memberId, limit);
+        List<DiaryResponse> diaryResponses = diaries.stream()
+                .map(DiaryResponse::from)
+                .collect(Collectors.toList());
+
+        DiaryListResponse response = DiaryListResponse.from(diaryResponses, diaryResponses.size());
+
+        log.info("Recent diaries retrieved for member {}: {} items", memberId, diaryResponses.size());
+        return ApiResponse.onSuccess(DiarySuccessStatus.DIARY_RECENT_FOUND, response);
     }
 }

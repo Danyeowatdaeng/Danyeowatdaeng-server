@@ -8,19 +8,31 @@ import java.util.List;
 @Getter
 @Builder
 public class DiaryListResponse {
+
     private List<DiaryResponse> diaries;
     private int totalCount;
     private boolean hasNext;
-    private int page;
-    private int size;
+    private int currentPage;
+    private int totalPages;
 
-    public static DiaryListResponse from(List<DiaryResponse> diaries, int totalCount, boolean hasNext, int page, int size) {
+    public static DiaryListResponse from(List<DiaryResponse> diaries, int totalCount) {
         return DiaryListResponse.builder()
-                .diaries(diaries)
+                .diaries(diaries != null ? diaries : List.of())
+                .totalCount(totalCount)
+                .hasNext(false)
+                .currentPage(0)
+                .totalPages(1)
+                .build();
+    }
+
+    public static DiaryListResponse from(List<DiaryResponse> diaries, int totalCount,
+                                         boolean hasNext, int currentPage, int totalPages) {
+        return DiaryListResponse.builder()
+                .diaries(diaries != null ? diaries : List.of())
                 .totalCount(totalCount)
                 .hasNext(hasNext)
-                .page(page)
-                .size(size)
+                .currentPage(currentPage)
+                .totalPages(totalPages)
                 .build();
     }
 }

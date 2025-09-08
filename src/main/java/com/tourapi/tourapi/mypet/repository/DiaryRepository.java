@@ -1,6 +1,7 @@
 package com.tourapi.tourapi.mypet.repository;
 
 import com.tourapi.tourapi.mypet.Diary;
+import com.tourapi.tourapi.mypet.enums.DiaryStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,25 +16,38 @@ import java.util.Optional;
 @Repository
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
 
-    // 다이어리 목록 조회
-    List<Diary> findByMemberIdAndIsActiveTrueOrderByCreatedAtDesc(Long memberId);
+    // 활성 다이어리 조회 (소프트 삭제 제외)
+    List<Diary> findByMemberIdAndStatusOrderByCreatedAtDesc(Long memberId, DiaryStatus status);
 
-    // 다이어리 페이징 조회
-    Page<Diary> findByMemberIdAndIsActiveTrueOrderByCreatedAtDesc(Long memberId, Pageable pageable);
+    // 페이징된 활성 다이어리 조회
+    Page<Diary> findByMemberIdAndStatusOrderByCreatedAtDesc(Long memberId, DiaryStatus status, Pageable pageable);
 
-    // 다이어리 조회
-    Optional<Diary> findByIdAndMemberIdAndIsActiveTrue(Long id, Long memberId);
+    // 다이어리 개수
+    long countByMemberIdAndStatus(Long memberId, DiaryStatus status);
 
-    // 다이어리 개수 조회
-    long countByMemberIdAndIsActiveTrue(Long memberId);
+    // 특정 회원의 특정 다이어리 조회 (활성 상태만)
+    Optional<Diary> findByIdAndMemberIdAndStatus(Long id, Long memberId, DiaryStatus status);
+
+    // 특정 회원의 다이어리 존재 여부 확인
+    boolean existsByIdAndMemberIdAndStatus(Long id, Long memberId, DiaryStatus status);
 
     // 특정 기간 내 다이어리 조회
-    @Query("SELECT d FROM Diary d WHERE d.member.id = :memberId AND d.isActive = true " +
+    @Query("SELECT d FROM Diary d WHERE d.member.id = :memberId AND d.status = :status " +
             "AND d.createdAt BETWEEN :startDate AND :endDate ORDER BY d.createdAt DESC")
-    List<Diary> findByMemberIdAndDateRange(@Param("memberId") Long memberId,
-                                           @Param("startDate") LocalDateTime startDate,
-                                           @Param("endDate") LocalDateTime endDate);
+    List<Diary> findByMemberIdAndStatusAndCreatedAtBetween(
+            @Param("memberId") Long memberId,
+            @Param("status") DiaryStatus status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 
-    // 최근 다이어리 조회
-    Optional<Diary> findTopByMemberIdAndIsActiveTrueOrderByCreatedAtDesc(Long memberId);
+    // 제목으로 검색
+    List<Diary> findByMemberIdAndStatusAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(
+            Long memberId, DiaryStatus status, String title);
+
+    // 최근 N개 다이어리 조회
+    @Query("SELECT d FROM Diary d WHERE d.member.id = :memberId AND d.status = :status " +
+            "ORDER BY d.createdAt DESC")
+    List<Diary> findTopNByMemberIdAndStatus(@Param("memberId") Long memberId,
+                                            @Param("status") DiaryStatus status,
+                                            Pageable pageable);
 }
