@@ -24,3 +24,11 @@ spring:
 jwt:
   secret: your-super-secret-key-that-should-be-long-and-secure
 
+tour:
+  api:
+    base-url: http://apis.data.go.kr/B551011/KorPetTourService
+    service-key: ${TOURAPI_SERVICE_KEY:}
+    connection-timeout: 5000
+    read-timeout: 10000
+    max-retries: 3
+
