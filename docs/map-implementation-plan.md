@@ -1,5 +1,172 @@
 # Map 도메인 구현 계획서
 
+## Detail Aggregate 확장 설계 (리뷰/제휴 장소/제휴 이벤트)
+
+### 목표
+- 외부 detailIntro + 내부 제휴 이벤트 + 리뷰/평점 + 사용자 컨텍스트를 하나의 응답으로 집계한다.
+- 도메인 경계를 유지(외부 API는 Client, 내부 데이터는 별도 엔티티/서비스)하고, Aggregation 서비스에서 최종 조립한다.
+
+### 엔티티 설계
+
+#### 1) partner_place (제휴 장소)
+- 목적: 외부 `contentId`와 파트너의 내부 장소를 매핑하고, 제휴 전용 메타 데이터를 보관
+- 필드
+  - `id (PK, bigint)`
+  - `content_id (bigint, not null)` — 외부 관광공사 contentId
+  - `content_type_id (int, not null)`
+  - `partner_id (varchar(50), not null)` — 파트너 식별자
+  - `name (varchar(200), not null)`
+  - `address (varchar(300))`
+  - `latitude (decimal(10,7))`, `longitude (decimal(10,7))`
+  - `status (varchar(20), default 'ACTIVE')` — ACTIVE, INACTIVE
+  - `created_at (timestamp)`, `updated_at (timestamp)`
+- 제약/인덱스
+  - UQ(`content_id`, `partner_id`)
+  - IDX(`partner_id`), IDX(`content_id`)
+
+#### 2) partner_event (제휴 이벤트)
+- 목적: 특정 제휴 장소에서 진행하는 할인/혜택/쿠폰 등의 이벤트 정의
+- 필드
+  - `id (PK, bigint)`
+  - `partner_place_id (bigint, FK -> partner_place.id)`
+  - `title (varchar(200), not null)`
+  - `description (text)`
+  - `benefits_json (json)` — 쿠폰/혜택 상세(타입·조건·금액 등)
+  - `start_at (timestamp, not null)`
+  - `end_at (timestamp, not null)`
+  - `status (varchar(20), default 'SCHEDULED')` — SCHEDULED, ACTIVE, ENDED
+  - `created_at (timestamp)`, `updated_at (timestamp)`
+- 인덱스
+  - IDX(`partner_place_id`)
+  - 기간 조회 최적화: IDX(`status`, `start_at`, `end_at`)
+
+#### 3) review (리뷰)
+- 목적: 후기, 평점, 신고/검수 상태 관리까지 포함한 신뢰도 높은 리뷰 저장소
+- 필드(권장)
+  - `id (PK, bigint)`
+  - `content_id (bigint, not null)` — 외부 관광지 식별자
+  - `user_id (bigint, not null)` — 회원 식별자
+  - `rating (tinyint, not null)` — 1~5 정수(클라이언트에서 0.5 단위 표현은 프론트 포맷팅)
+  - `title (varchar(100))` — 선택
+  - `content (text)`
+  - `images_json (json)` — 이미지 배열
+  - `like_count (int, default 0)` — 공감수(별도 테이블로 분리 가능)
+  - `status (varchar(20), default 'PUBLISHED')` — DRAFT, PUBLISHED, HIDDEN, DELETED
+  - `reported_count (int, default 0)`
+  - `created_at (timestamp)`, `updated_at (timestamp)`
+- 제약/인덱스
+  - IDX(`content_id`, `created_at desc`), IDX(`user_id`)
+  - 정책에 따라 UQ(`content_id`,`user_id`)로 1인 1리뷰 강제 가능(여러 번 허용 시 제거)
+- 보조 테이블(선택)
+  - `review_like(review_id, user_id, created_at)` — 중복 좋아요 방지 UQ(`review_id`,`user_id`)
+  - `review_report(review_id, user_id, reason, created_at)` — 신고 기록
+
+#### 4) review_summary (집계 뷰/테이블)
+- 목적: 상세 조회/리스트에서 빠른 평균/카운트 제공(읽기 최적화)
+- 필드
+  - `content_id (PK, bigint)`
+  - `rating_avg (decimal(3,2))` — 소수점 두 자리까지
+  - `rating_cnt (int)`
+  - `last_review_id (bigint)` — 최근 리뷰 참조(선택)
+  - `updated_at (timestamp)`
+- 갱신 전략
+  - 쓰기 경로에서 이벤트 발행 → 비동기 집계(Outbox/스케줄러)
+  - 정합성 보수를 위해 하루 1회 재집계 배치 권장
+
+### 연관 관계
+- `partner_place (1) — (N) partner_event`
+- `partner_place (N) — (1) content_id`(논리적 매핑)
+- `review (N) — (1) content_id`
+
+### API/서비스 계층
+- `DetailAggregationService`
+  - 입력: `contentId, contentTypeId, include(intro|events|reviews|my)`
+  - 처리: 외부 intro 조회 + partner_event 현재 진행 건 + review 목록/summary + 사용자 컨텍스트 조립
+  - 출력: `DetailAggregate`
+- `PartnerEventService`
+  - `findActiveEvents(contentId, now)`
+- `ReviewService`
+  - `getReviews(contentId, pageable)`, `getSummary(contentId)`
+
+### 응답 스키마(요약)
+```json
+{
+  "contentId": 2603720,
+  "contentTypeId": 39,
+  "summary": { "rating": 4.2, "reviewCount": 25, "title": "..." },
+  "intro": { "firstmenu": "...", "opentimefood": "..." },
+  "events": [ { "eventId": 1, "title": "첫 방문 음료 무료", "period": {"start":"2024-09-01","end":"2024-09-30"} } ],
+  "reviews": { "items": [ { "reviewId": 1, "rating": 4.0, "content": "친절" } ], "page":0, "size":10, "totalElements":25 },
+  "my": { "bookmarked": false }
+}
+```
+
+### 인프라/성능 고려
+- Caching: intro(30~60분), review summary(5분), 이벤트(1~5분)
+- 재시도/타임아웃: 외부 API 2~3회 백오프, 2~3초 타임아웃
+- 인덱스: 위 설계 반영, 고비용 쿼리 실행 계획 주기 점검
+
+### 마이그레이션 DDL 스케치 (RDB 기준)
+```sql
+create table partner_place (
+  id bigint primary key auto_increment,
+  content_id bigint not null,
+  content_type_id int not null,
+  partner_id varchar(50) not null,
+  name varchar(200) not null,
+  address varchar(300),
+  latitude decimal(10,7),
+  longitude decimal(10,7),
+  status varchar(20) default 'ACTIVE',
+  created_at timestamp default current_timestamp,
+  updated_at timestamp default current_timestamp on update current_timestamp,
+  unique key uq_place_content_partner (content_id, partner_id),
+  key idx_place_partner (partner_id),
+  key idx_place_content (content_id)
+);
+
+create table partner_event (
+  id bigint primary key auto_increment,
+  partner_place_id bigint not null,
+  title varchar(200) not null,
+  description text,
+  benefits_json json,
+  start_at timestamp not null,
+  end_at timestamp not null,
+  status varchar(20) default 'SCHEDULED',
+  created_at timestamp default current_timestamp,
+  updated_at timestamp default current_timestamp on update current_timestamp,
+  key idx_event_place (partner_place_id),
+  key idx_event_period (status, start_at, end_at)
+);
+
+create table review (
+  id bigint primary key auto_increment,
+  content_id bigint not null,
+  user_id bigint not null,
+  rating decimal(2,1) not null,
+  content text,
+  images_json json,
+  created_at timestamp default current_timestamp,
+  updated_at timestamp default current_timestamp on update current_timestamp,
+  key idx_review_content_created (content_id, created_at desc)
+  -- unique key uq_review_content_user (content_id, user_id) -- 정책에 따라 사용
+);
+
+create table review_summary (
+  content_id bigint primary key,
+  rating_avg decimal(3,2),
+  rating_cnt int,
+  updated_at timestamp
+);
+```
+
+### 단계별 도입 계획
+1) 스키마/엔티티 추가(리뷰 읽기만), Aggregation 서비스로 intro+summary 조합
+2) 파트너 장소/이벤트 읽기 경로 연결, `include` 분기 적용
+3) 리뷰 쓰기/수정/삭제 + summary 비동기 집계
+4) 캐싱/레이트리밋/문서화 보강
+
 ## 개요
 
 Map 도메인은 한국관광공사 반려동물 관광정보 API를 활용하여 위치 기반 및 키워드 기반 관광 정보를 제공하는 서비스입니다. 어댑터 패턴을 적용하여 외부 API 의존성을 분리하고, 단계별로 구현하여 안정적인 서비스를 구축합니다.
