@@ -25,8 +25,8 @@ public class TourApiClient {
     private static final Logger log = LoggerFactory.getLogger(TourApiClient.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ExternalTourApiResponse fetchTourDataByLocation(Double latitude, Double longitude,
-                                                           Integer radius, Integer category, boolean useJson) {
+    private ExternalTourApiResponse fetchTourDataByLocation(Double latitude, Double longitude,
+                                                           Integer radius, Integer category) {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("MobileOS", "ETC");
         params.add("MobileApp", "AppTest");
@@ -38,7 +38,7 @@ public class TourApiClient {
         if (category != null) params.add("contentTypeId", String.valueOf(category));
 
 
-        String requestUrl = UriComponentsBuilder.fromHttpUrl(properties.getBaseUrl())
+        String requestUrl = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
                 .path(properties.getLocationBasedListPath())
                 .queryParams(params)
                 .queryParam("serviceKey", properties.getServiceKey())
@@ -77,7 +77,7 @@ public class TourApiClient {
         if (pageNo != null) params.add("pageNo", String.valueOf(pageNo));
         if (numOfRows != null) params.add("numOfRows", String.valueOf(numOfRows));
 
-        String requestUrl = UriComponentsBuilder.fromHttpUrl(properties.getBaseUrl())
+        String requestUrl = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
                 .path(properties.getSearchKeywordPath())
                 .queryParams(params)
                 .queryParam("serviceKey", properties.getServiceKey())
@@ -104,42 +104,35 @@ public class TourApiClient {
                 .block();
     }
 
-    public ExternalTourApiResponse fetchTourDataByCategory(Integer category, Integer pageNo, Integer numOfRows,
-                                                          boolean useJson) {
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("MobileOS", "ETC");
-        params.add("MobileApp", "AppTest");
-        params.add("listYN", "Y");
-        params.add("arrange", "A");
-        if (category != null) params.add("contentTypeId", String.valueOf(category));
-        if (pageNo != null) params.add("pageNo", String.valueOf(pageNo));
-        if (numOfRows != null) params.add("numOfRows", String.valueOf(numOfRows));
 
-        String requestUrl = UriComponentsBuilder.fromHttpUrl(properties.getBaseUrl())
-                .path(properties.getAreaBasedListPath())
-                .queryParams(params)
-                .queryParam("serviceKey", properties.getServiceKey())
-                .build(false)
-                .toUriString() + "&_type=json";
-        log.info("[TourAPI] GET {}", requestUrl);
+    public ExternalTourApiResponse fetchTourDataByBounds(Double swLat, Double swLng, Double neLat, Double neLng, 
+                                                        Integer category, Integer zoomLevel, boolean useJson) {
+        // 영역 중심점 계산 (남서-북동 좌표 기준)
+        Double centerLat = (swLat + neLat) / 2;
+        Double centerLng = (swLng + neLng) / 2;
+        
+        // 줌 레벨에 따른 반경 계산
+        Integer radius = calculateRadiusByZoom(zoomLevel);
+        
+        // 중심점 기반 위치 검색 API 호출
+        return fetchTourDataByLocation(centerLat, centerLng, radius, category);
+    }
 
-        return tourApiWebClient.get()
-                .uri(java.net.URI.create(requestUrl))
-                .exchangeToMono(res -> {
-                    MediaType ct = res.headers().contentType().orElse(null);
-                    log.info("[TourAPI] Response status={}, contentType={}", res.statusCode(), ct);
-                    if (ct != null && ct.includes(MediaType.APPLICATION_JSON)) {
-                        return res.bodyToMono(String.class).map(body -> {
-                            log.info("[TourAPI] Response body(json)={}", snippet(body));
-                            return parseJsonResponse(body);
-                        });
-                    }
-                    return res.bodyToMono(String.class).map(body -> {
-                        log.warn("[TourAPI] Non-JSON response received ({}), body={}", ct, snippet(body));
-                        return new ExternalTourApiResponse();
-                    });
-                })
-                .block();
+    private Integer calculateRadiusByZoom(Integer zoomLevel) {
+        if (zoomLevel == null) return 1000; // 기본값
+        
+        // 줌 레벨에 따른 반경 매핑 (미터 단위) - 줌 1이 가장 가까운 거리
+        return switch (zoomLevel) {
+            case 1 -> 200;     // 바로 근처
+            case 2 -> 500;     // 매우 근처
+            case 3 -> 1000;    // 근처
+            case 4 -> 2000;    // 상세 지역
+            case 5 -> 5000;    // 읍/면/동
+            case 6 -> 10000;   // 시/군/구
+            case 7 -> 25000;   // 광역시/도
+            case 8 -> 50000;   // 전국
+            default -> 1000;   // 기본값
+        };
     }
 
     private ExternalTourApiResponse parseJsonResponse(String json) {

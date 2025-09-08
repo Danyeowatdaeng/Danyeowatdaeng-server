@@ -1,19 +1,26 @@
 package com.tourapi.tourapi.web.controller.map;
 
-import com.tourapi.tourapi.common.exception.ApiResponse;
-import com.tourapi.tourapi.common.exception.general.status.SuccessStatus;
-import com.tourapi.tourapi.common.exception.map.status.MapSuccessStatus;
-import com.tourapi.tourapi.map.domain.TourLocation;
-import com.tourapi.tourapi.map.service.TourLocationService;
-import lombok.RequiredArgsConstructor;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.tourapi.tourapi.common.exception.ApiResponse;
+import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
+import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
+import com.tourapi.tourapi.common.exception.map.status.MapErrorStatus;
+import com.tourapi.tourapi.common.exception.map.status.MapSuccessStatus;
+import com.tourapi.tourapi.map.domain.TourLocation;
+import com.tourapi.tourapi.map.service.TourLocationService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/map")
@@ -23,27 +30,14 @@ public class MapController {
 
     private final TourLocationService tourLocationService;
 
-    @GetMapping("/search")
-    @Operation(
-            summary = "위치 기반 관광지 검색",
-            description = "위도/경도를 기준으로 반경 내 관광지를 조회합니다. category는 한국관광공사 contentTypeId(예: 12,14,15,28,32,38,39)를 사용합니다."
-    )
-    public ResponseEntity<ApiResponse<List<TourLocation>>> searchLocations(
-            @RequestParam(name = "latitude") Double latitude,
-            @RequestParam(name = "longitude") Double longitude,
-            @RequestParam(name = "radius", defaultValue = "1000") Integer radius,
-            @RequestParam(name = "category", required = false) Integer category,
-            @RequestParam(name = "json", defaultValue = "true") boolean json
-    ) {
-        List<TourLocation> results = tourLocationService.searchByLocation(latitude, longitude, radius, category);
-        return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, results);
-    }
 
     @GetMapping("/search/keyword")
     @Operation(
             summary = "키워드 기반 관광지 검색",
-            description = "키워드로 관광지를 검색합니다. pageable 파라미터(page,size,sort) 이용 가능."
+            description = "키워드로 관광지를 검색합니다. 페이징/정렬 파라미터 설명: page=0부터 시작하는 페이지 번호, size=페이지당 개수, sort=정렬 기준(형식: 필드,방향 예: name,asc). 여러 정렬은 sort를 여러 번 지정."
     )
+    @ApiErrorCodeExample(value = MapErrorStatus.class, codes = {"EXTERNAL_API_FAILURE", "INVALID_PARAMETER"})
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"INTERNAL_SERVER_ERROR"})
     public ResponseEntity<ApiResponse<List<TourLocation>>> searchByKeyword(
             @RequestParam(name = "keyword") String keyword,
             @PageableDefault(size = 20) Pageable pageable,
@@ -53,18 +47,25 @@ public class MapController {
         return ApiResponse.onSuccess(MapSuccessStatus.KEYWORD_SEARCH_SUCCESS, results);
     }
 
-    @GetMapping("/search/category")
+
+    @GetMapping("/search/bounds")
     @Operation(
-            summary = "카테고리별 관광지 조회",
-            description = "카테고리(contentTypeId)로 관광지를 조회합니다. pageable 파라미터(page,size,sort) 이용 가능."
+            summary = "영역 기반 관광지 검색",
+            description = "지도의 남서(SW)/북동(NE) 좌표를 기준으로 해당 영역 내 관광지를 조회합니다. category 파라미터를 추가하면 해당 카테고리(contentTypeId)로 필터링됩니다. 카카오맵 bounds_changed 이벤트와 연동하여 사용합니다."
     )
-    public ResponseEntity<ApiResponse<List<TourLocation>>> searchByCategory(
-            @RequestParam(name = "category") Integer category,
-            @PageableDefault(size = 20) Pageable pageable,
+    @ApiErrorCodeExample(value = MapErrorStatus.class, codes = {"EXTERNAL_API_FAILURE", "INVALID_PARAMETER", "LOCATION_NOT_FOUND"})
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"INTERNAL_SERVER_ERROR"})
+    public ResponseEntity<ApiResponse<List<TourLocation>>> searchByBounds(
+            @RequestParam(name = "swLat") Double swLat,      // 남서쪽 위도
+            @RequestParam(name = "swLng") Double swLng,      // 남서쪽 경도
+            @RequestParam(name = "neLat") Double neLat,      // 북동쪽 위도
+            @RequestParam(name = "neLng") Double neLng,      // 북동쪽 경도
+            @RequestParam(name = "category", required = false) Integer category,
+            @RequestParam(name = "zoomLevel", required = false) Integer zoomLevel,
             @RequestParam(name = "json", defaultValue = "true") boolean json
     ) {
-        List<TourLocation> results = tourLocationService.findByCategory(category, pageable);
-        return ApiResponse.onSuccess(MapSuccessStatus.CATEGORY_SEARCH_SUCCESS, results);
+        List<TourLocation> results = tourLocationService.searchByBounds(swLat, swLng, neLat, neLng, category, zoomLevel);
+        return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, results);
     }
 }
 
