@@ -24,6 +24,10 @@ spring:
 jwt:
   secret: your-super-secret-key-that-should-be-long-and-secure
 
+app:
+  auth:
+    success-redirect-url: ${APP_SUCCESS_REDIRECT_URL:/app}
+
 tour:
   api:
     base-url: http://apis.data.go.kr/B551011/KorPetTourService

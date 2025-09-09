@@ -30,7 +30,16 @@ public enum MemberSuccessStatus implements SuccessResponse {
     FCM_TOKEN_SAVED(HttpStatus.OK,"MEMBER2024", "FCM토큰이 저장되었습니다." ),
     FCM_TOKEN_FOUND(HttpStatus.OK,"MEMBER2025" , "FCM토큰이 조회되었습니다." ),
     FCM_TOKEN_DELETED(HttpStatus.OK,"MEMBER2026", "FCM 토큰이 삭제되었습니다." ),
-    MEMBER_DELETED(HttpStatus.OK,"MEMBER2027" , "회원이 성공적으로 탈퇴하였습니다." );
+    MEMBER_DELETED(HttpStatus.OK,"MEMBER2027" , "회원이 성공적으로 탈퇴하였습니다." ),
+
+    // OAuth 관련
+    OAUTH_LOGIN_STARTED(HttpStatus.FOUND, "MEMBER2030", "OAuth 로그인이 시작되었습니다."),
+    OAUTH_LOGIN_SUCCESS(HttpStatus.FOUND, "MEMBER2031", "OAuth 로그인이 완료되었습니다."),
+    OAUTH_LOGOUT_SUCCESS(HttpStatus.OK, "MEMBER2032", "로그아웃이 완료되었습니다."),
+    USER_INFO_RETRIEVED(HttpStatus.OK, "MEMBER2033", "사용자 정보가 조회되었습니다."),
+    OAUTH_CALLBACK_SUCCESS(HttpStatus.FOUND, "MEMBER2034", "OAuth 콜백 처리가 완료되었습니다."),
+    OAUTH_TOKEN_VALIDATED(HttpStatus.OK, "MEMBER2035", "OAuth 토큰이 유효합니다."),
+    OAUTH_SESSION_CREATED(HttpStatus.OK, "MEMBER2036", "OAuth 세션이 생성되었습니다.");
 
 
 
