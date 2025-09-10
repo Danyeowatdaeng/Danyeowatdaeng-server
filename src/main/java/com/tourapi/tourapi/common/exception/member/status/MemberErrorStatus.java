@@ -35,7 +35,28 @@ public enum MemberErrorStatus implements ErrorResponse {
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER4030", "알림 설정이 존재하지 않습니다."),
     @ExplainError("필수 약관 파일이 존재하지 않음")
     TERM_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER4040", "필수 약관 파일이 존재하지 않습니다."),
-    
+
+    // OAuth 관련 에러
+    @ExplainError("지원하지 않는 OAuth 공급자")
+    UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.NOT_IMPLEMENTED, "MEMBER4050", "지원하지 않는 OAuth 공급자입니다."),
+    @ExplainError("OAuth 설정이 올바르지 않음")
+    OAUTH_CONFIG_INVALID(HttpStatus.SERVICE_UNAVAILABLE, "MEMBER4051", "OAuth 설정이 올바르지 않습니다."),
+    @ExplainError("OAuth 콜백 처리 실패")
+    OAUTH_CALLBACK_FAILED(HttpStatus.BAD_REQUEST, "MEMBER4052", "OAuth 콜백 처리에 실패했습니다."),
+    @ExplainError("OAuth 토큰 교환 실패")
+    OAUTH_TOKEN_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY, "MEMBER4053", "OAuth 토큰 교환에 실패했습니다."),
+    @ExplainError("OAuth 사용자 정보 조회 실패")
+    OAUTH_USERINFO_FAILED(HttpStatus.BAD_GATEWAY, "MEMBER4054", "OAuth 사용자 정보 조회에 실패했습니다."),
+    @ExplainError("OAuth state 검증 실패")
+    OAUTH_STATE_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER4055", "OAuth state 검증에 실패했습니다."),
+    @ExplainError("인증되지 않은 사용자")
+    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "MEMBER4056", "인증되지 않은 사용자입니다."),
+    @ExplainError("OAuth 인증 코드 누락")
+    OAUTH_CODE_MISSING(HttpStatus.BAD_REQUEST, "MEMBER4057", "OAuth 인증 코드가 누락되었습니다."),
+    @ExplainError("OAuth 세션 만료")
+    OAUTH_SESSION_EXPIRED(HttpStatus.UNAUTHORIZED, "MEMBER4058", "OAuth 세션이 만료되었습니다."),
+    @ExplainError("OAuth 로그인 시작 실패")
+    OAUTH_LOGIN_START_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MEMBER4059", "OAuth 로그인 시작에 실패했습니다."),
 
     ;
 

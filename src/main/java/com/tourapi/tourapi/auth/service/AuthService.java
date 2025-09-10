@@ -11,5 +11,7 @@ public interface AuthService {
     
     TokenResponse socialLogin(String provider, String token);
     
+    TokenResponse oauthCallbackLogin(String provider, String providerUserId, String email, String name);
+    
     TokenResponse refreshToken(String oldRefreshToken);
 }
