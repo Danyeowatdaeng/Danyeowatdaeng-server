@@ -32,15 +32,22 @@ spring:
     level:
       root: WARN
       com.tourapi: INFO
+      "[com.tourapi.tourapi.auth]": INFO
+      "[com.tourapi.tourapi.auth.oauth]": INFO
       org.springframework.web: WARN
+      org.springframework.security: INFO
+      org.springframework.security.oauth2: INFO
       org.hibernate.SQL: WARN
       org.hibernate.type.descriptor.sql.BasicBinder: WARN
 
 logging:
   level:
     com.tourapi: INFO
+    "[com.tourapi.tourapi.auth]": INFO
+    "[com.tourapi.tourapi.auth.oauth]": INFO
     org.springframework.web: WARN
-    org.springframework.security: WARN
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
