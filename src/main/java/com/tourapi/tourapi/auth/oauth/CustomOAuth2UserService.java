@@ -23,12 +23,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
         log.info("OAuth2 사용자 로드 시작: provider={}", registrationId);
+        log.debug("OAuth2 클라이언트 등록 정보: clientId={}, redirectUri={}", 
+            userRequest.getClientRegistration().getClientId(),
+            userRequest.getClientRegistration().getRedirectUri());
 
         try {
             // 기본 OAuth2User 로드
             OAuth2User oauth2User = super.loadUser(userRequest);
             Map<String, Object> attributes = oauth2User.getAttributes();
-            log.debug("OAuth2 attributes={}", attributes);
+            log.info("OAuth2 사용자 정보 로드 완료: provider={}, attributes={}", registrationId, attributes);
+            log.debug("OAuth2 사용자 상세 정보: name={}, authorities={}", oauth2User.getName(), oauth2User.getAuthorities());
 
             // Provider별 사용자 정보 처리
             String providerUserId;
