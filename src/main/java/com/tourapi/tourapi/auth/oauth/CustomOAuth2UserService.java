@@ -41,9 +41,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
             switch (registrationId) {
                 case "google":
+                    log.info("구글 OAuth 사용자 정보 처리 시작: attributes={}", attributes);
                     providerUserId = (String) attributes.get("sub");
                     email = (String) attributes.get("email");
                     name = (String) attributes.get("name");
+                    log.info("구글 OAuth 사용자 정보 추출 완료: providerUserId={}, email={}, name={}", 
+                        providerUserId, email, name);
                     break;
                 case "kakao":
                     providerUserId = String.valueOf(attributes.get("id"));
@@ -80,8 +83,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return new CustomOAuth2User(attributes, tokenResponse, registrationId);
 
         } catch (Exception e) {
-            log.error("OAuth2 사용자 로드 실패: provider={}", registrationId, e);
-            throw new OAuth2AuthenticationException("OAuth2 인증 실패");
+            log.error("OAuth2 사용자 로드 실패: provider={}, error={}", registrationId, e.getMessage(), e);
+            throw new OAuth2AuthenticationException("OAuth2 인증 실패: " + e.getMessage());
         }
     }
 }

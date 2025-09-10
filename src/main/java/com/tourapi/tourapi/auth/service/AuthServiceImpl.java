@@ -66,6 +66,8 @@ public class AuthServiceImpl implements AuthService {
     
     @Override
     public TokenResponse oauthCallbackLogin(String provider, String providerUserId, String email, String name) {
+        logger.info("OAuth 콜백 로그인 시작: provider={}, providerUserId={}, email={}, name={}", 
+            provider, providerUserId, email, name);
         try {
             // 제공자 식별자 + 이메일 기준으로 회원 조회, 없으면 생성
             Member member = memberRepository.findByEmail(email).orElse(null);
