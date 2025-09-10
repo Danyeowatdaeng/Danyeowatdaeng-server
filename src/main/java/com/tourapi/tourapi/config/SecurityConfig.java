@@ -1,12 +1,15 @@
 package com.tourapi.tourapi.config;
 
 import com.tourapi.tourapi.auth.jwt.JwtAuthenticationFilter;
+import com.tourapi.tourapi.auth.oauth.CustomOAuth2UserService;
+import com.tourapi.tourapi.auth.oauth.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -16,19 +19,24 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oauth2SuccessHandler;
+    private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http.authorizeHttpRequests((authz) -> authz
-                // 공개 엔드포인트
-//                .requestMatchers("/api/terms/current", "/api/terms/*").permitAll()
-//                .requestMatchers("/api/auth/**").permitAll()
-//                .requestMatchers("/h2-console/**").permitAll()
-//                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-//                .requestMatchers("/actuator/**").permitAll()
-//                // 인증이 필요한 엔드포인트
-//                .requestMatchers("/api/terms/agree-terms", "/api/terms/agreement-status").authenticated()
+                // // OAuth2 로그인 관련 엔드포인트 허용
+                // .requestMatchers("/login/oauth2/**", "/oauth2/**").permitAll()
+                // // 기존 API 엔드포인트들
+                // .requestMatchers("/api/auth/refresh", "/api/auth/me").authenticated()
+                // .requestMatchers("/api/terms/agree-terms", "/api/terms/agreement-status").authenticated()
+                // // 공개 엔드포인트
+                // .requestMatchers("/api/terms/current", "/api/terms/*").permitAll()
+                // .requestMatchers("/h2-console/**").permitAll()
+                // .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().permitAll()
         );
 
@@ -36,6 +44,16 @@ public class SecurityConfig {
             .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
             .sessionManagement((session) -> session
                     .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .oauth2Login(oauth2 -> oauth2
+                    .clientRegistrationRepository(clientRegistrationRepository)
+                    .userInfoEndpoint(userInfo -> userInfo
+                            .userService(customOAuth2UserService)
+                    )
+                    .successHandler(oauth2SuccessHandler)
+                    .failureHandler((request, response, exception) -> {
+                        response.sendRedirect("/login?error=oauth_failed");
+                    })
+            )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
