@@ -67,5 +67,6 @@ server:
     include-message: never
     include-binding-errors: never
     include-stacktrace: never
+  forward-headers-strategy: framework 
 
 
