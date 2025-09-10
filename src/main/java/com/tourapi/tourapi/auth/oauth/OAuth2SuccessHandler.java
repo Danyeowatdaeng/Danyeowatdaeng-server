@@ -35,6 +35,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             request.getRequestURI(), request.getRemoteAddr());
         
         CustomOAuth2User oauth2User = (CustomOAuth2User) authentication.getPrincipal();
+        log.info("OAuth2 인증 성공 - 사용자 정보: provider={}, email={}, name={}", 
+            oauth2User.getRegistrationId(), oauth2User.getEmail(), oauth2User.getName());
+        
         TokenResponse tokenResponse = oauth2User.getTokenResponse();
 
         log.info("OAuth2 로그인 성공: provider={}, email={}, isSignUpCompleted={}", 
@@ -48,7 +51,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         // 가입완료 여부에 따라 리다이렉트 분기
         String targetUrl = tokenResponse.isSignUpCompleted ? successRedirectUrl : onboardingRedirectUrl;
-        log.info("OAuth2 리다이렉트: targetUrl={}, isSignUpCompleted={}", targetUrl, tokenResponse.isSignUpCompleted);
+        log.info("OAuth2 리다이렉트: targetUrl={}, isSignUpCompleted={} ", targetUrl, tokenResponse.isSignUpCompleted);
         response.sendRedirect(targetUrl);
     }
 
