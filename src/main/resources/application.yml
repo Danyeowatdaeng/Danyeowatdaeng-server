@@ -24,6 +24,8 @@ spring:
 jwt:
   secret: your-super-secret-key-that-should-be-long-and-secure
 
+
+
 tour:
   api:
     base-url: http://apis.data.go.kr/B551011/KorPetTourService
@@ -32,3 +34,9 @@ tour:
     read-timeout: 10000
     max-retries: 3
 
+
+# 앱 인증 관련 (프론트로 최종 리다이렉트되는 URL)
+app:
+  auth:
+    success-redirect-url: ${APP_AUTH_SUCCESS_REDIRECT_URL}
+    onboarding-redirect-url: ${APP_AUTH_ONBOARDING_REDIRECT_URL}
