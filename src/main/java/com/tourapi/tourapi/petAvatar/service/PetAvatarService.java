@@ -48,4 +48,7 @@ public interface PetAvatarService {
     
     // AI 확장용: PetAvatar 활성화
     void activatePetAvatar(Long petAvatarId);
+
+    // MVP: 업로드된 이미지로 아바타 생성 (바이트 반환)
+    byte[] generateAvatarFromUpload(byte[] imageBytes, String filename, String prompt);
 }

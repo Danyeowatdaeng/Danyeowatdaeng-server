@@ -1,14 +1,26 @@
 package com.tourapi.tourapi.web.controller.petAvatar;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.tourapi.tourapi.auth.jwt.UserPrincipal;
 import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
@@ -16,6 +28,7 @@ import com.tourapi.tourapi.common.exception.ApiResponse;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
 import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarSuccessStatus;
+import com.tourapi.tourapi.petAvatar.config.PetAvatarProperties;
 import com.tourapi.tourapi.petAvatar.dto.PetAvatarListResponse;
 import com.tourapi.tourapi.petAvatar.dto.PetAvatarResponse;
 import com.tourapi.tourapi.petAvatar.enums.PetAvatarStyle;
@@ -36,6 +49,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PetAvatarController {
 
     private final PetAvatarService petAvatarService;
+    private final PetAvatarProperties properties;
 
     // PetAvatar 목록 조회 (기본 + 커스텀)
     @GetMapping
@@ -167,4 +181,36 @@ public class PetAvatarController {
     }
 
     // JwtAuthenticationFilter 가 SecurityContext 에 주입한 UserPrincipal 을 직접 사용합니다.
+
+    // === MVP Upload (moved from PetAvatarMvpController) ===
+    @PostMapping(value = "/mvp-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> generateByUpload(@RequestPart("file") MultipartFile file,
+                                              @RequestPart("prompt") String prompt) {
+        try {
+            byte[] imageBytes = file.getBytes();
+            byte[] out = petAvatarService.generateAvatarFromUpload(imageBytes, file.getOriginalFilename(), prompt);
+            return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_CONVERTED, out);
+        } catch (ResponseStatusException e) {
+            org.springframework.http.HttpStatusCode status = e.getStatusCode();
+            if (status.value() == HttpStatus.BAD_REQUEST.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_BAD_REQUEST);
+            if (status.value() == HttpStatus.FORBIDDEN.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_FORBIDDEN);
+            if (status.value() == HttpStatus.UNAUTHORIZED.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_INVALID_API_KEY);
+            if (status.value() == HttpStatus.NOT_FOUND.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_MODEL_NOT_FOUND);
+            if (status.value() == HttpStatus.TOO_MANY_REQUESTS.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_RATE_LIMITED);
+            return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UPSTREAM_ERROR);
+        } catch (Exception e) {
+            return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UNKNOWN_ERROR);
+        }
+    }
+
+    private static PetAvatarErrorStatus mapGeminiHttpStatus(org.springframework.web.client.HttpStatusCodeException e) {
+        org.springframework.http.HttpStatusCode status = e.getStatusCode();
+        if (status.value() == HttpStatus.UNAUTHORIZED.value()) return PetAvatarErrorStatus.GEMINI_INVALID_API_KEY;
+        if (status.value() == HttpStatus.FORBIDDEN.value()) return PetAvatarErrorStatus.GEMINI_FORBIDDEN;
+        if (status.value() == HttpStatus.NOT_FOUND.value()) return PetAvatarErrorStatus.GEMINI_MODEL_NOT_FOUND;
+        if (status.value() == HttpStatus.TOO_MANY_REQUESTS.value()) return PetAvatarErrorStatus.GEMINI_RATE_LIMITED;
+        if (status.is4xxClientError()) return PetAvatarErrorStatus.GEMINI_BAD_REQUEST;
+        if (status.is5xxServerError()) return PetAvatarErrorStatus.GEMINI_UPSTREAM_ERROR;
+        return PetAvatarErrorStatus.GEMINI_UNKNOWN_ERROR;
+    }
 }

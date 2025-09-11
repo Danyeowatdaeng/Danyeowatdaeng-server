@@ -58,3 +58,11 @@ app:
   auth:
     success-redirect-url: ${APP_AUTH_SUCCESS_REDIRECT_URL}
     onboarding-redirect-url: ${APP_AUTH_ONBOARDING_REDIRECT_URL}
+
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET:}
+    region: ${AWS_S3_REGION:ap-northeast-2}
+    cloudfrontDomain: ${AWS_CLOUDFRONT_DOMAIN:}
+    presignExpireSeconds: ${AWS_PRESIGN_EXPIRE_SECONDS:600}

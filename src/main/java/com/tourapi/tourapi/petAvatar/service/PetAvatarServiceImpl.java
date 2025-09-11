@@ -14,6 +14,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import java.net.URI;
+import java.util.Map;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +36,7 @@ public class PetAvatarServiceImpl implements PetAvatarService {
 
     private final PetAvatarRepository petAvatarRepository;
     private final MemberRepository memberRepository;
+    private final com.tourapi.tourapi.petAvatar.config.PetAvatarProperties properties;
 
     @Override
     public List<PetAvatar> getAllActivePetAvatars() {
@@ -134,5 +145,122 @@ public class PetAvatarServiceImpl implements PetAvatarService {
         petAvatarRepository.save(petAvatar);
         
         log.info("PetAvatar {} activated", petAvatarId);
+    }
+
+    @Override
+    public byte[] generateAvatarFromUpload(byte[] imageBytes, String filename, String prompt) {
+        if (!properties.isEnabled()) {
+            throw new PetAvatarHandler(PetAvatarErrorStatus.GEMINI_SERVICE_DISABLED);
+        }
+        if ("mock".equalsIgnoreCase(properties.getProvider())) {
+            return new byte[]{};
+        }
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_INVALID_IMAGE_FORMAT);
+        }
+        if ("gemini".equalsIgnoreCase(properties.getProvider())) {
+            return callGeminiImageGenerateFromBytes(new RestTemplate(), imageBytes, filename, prompt);
+        }
+        throw new PetAvatarHandler(PetAvatarErrorStatus.PROVIDER_UNSUPPORTED);
+    }
+
+    private byte[] callGeminiImageGenerateFromBytes(RestTemplate restTemplate, byte[] imageBytes, String filename, String prompt) {
+        String b64 = java.util.Base64.getEncoder().encodeToString(imageBytes);
+        String modelPath = "models/gemini-2.5-flash-image-preview:generateContent";
+        String endpoint = properties.getProviderBaseUrl() + "/" + modelPath + "?key=" + properties.getApiKey();
+
+        String mime = guessMimeType(filename == null ? null : filename);
+        Map<String, Object> inlineData = Map.of(
+            "mime_type", mime,
+            "data", b64
+        );
+        Map<String, Object> body = Map.of(
+            "contents", new Object[]{
+                Map.of(
+                    "parts", new Object[]{
+                        Map.of("text", prompt),
+                        Map.of("inline_data", inlineData)
+                    }
+                )
+            }
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            ResponseEntity<Map<String, Object>> resp = restTemplate.postForEntity(URI.create(endpoint), new HttpEntity<>(body, headers), (Class<Map<String, Object>>)(Class<?>)Map.class);
+            Map<String, Object> responseBody = resp.getBody();
+            if (responseBody == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Empty response from Gemini");
+            }
+            byte[] out = extractGeminiImageBytes(restTemplate, responseBody);
+            return out;
+        } catch (HttpStatusCodeException e) {
+            throw new ResponseStatusException(e.getStatusCode(), e.getResponseBodyAsString());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, e.getMessage(), e);
+        }
+    }
+
+    private static byte[] extractGeminiImageBytes(RestTemplate restTemplate, Map<?, ?> responseBody) {
+        Object candidates = responseBody.get("candidates");
+        if (!(candidates instanceof java.util.List) || ((java.util.List<?>) candidates).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No candidates in response");
+        }
+        Object first = ((java.util.List<?>) candidates).get(0);
+        if (!(first instanceof Map)) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Invalid candidates[0]");
+        }
+        Object content = ((Map<?, ?>) first).get("content");
+        if (!(content instanceof Map)) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Missing content");
+        }
+        Object parts = ((Map<?, ?>) content).get("parts");
+        if (!(parts instanceof java.util.List)) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Missing parts");
+        }
+        for (Object p : (java.util.List<?>) parts) {
+            if (!(p instanceof Map)) continue;
+            Map<?, ?> part = (Map<?, ?>) p;
+
+            Object inline = part.containsKey("inline_data") ? part.get("inline_data") : part.get("inlineData");
+            if (inline instanceof Map && ((Map<?, ?>) inline).containsKey("data")) {
+                String data = String.valueOf(((Map<?, ?>) inline).get("data"));
+                return java.util.Base64.getDecoder().decode(data);
+            }
+
+            Object media = part.get("media");
+            if (media instanceof Map && ((Map<?, ?>) media).containsKey("data")) {
+                String data = String.valueOf(((Map<?, ?>) media).get("data"));
+                return java.util.Base64.getDecoder().decode(data);
+            }
+
+            byte[] fetched = tryDownloadByFileUri(restTemplate, part);
+            if (fetched != null && fetched.length > 0) return fetched;
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No inline image data found");
+    }
+
+    private static byte[] tryDownloadByFileUri(RestTemplate restTemplate, Map<?, ?> part) {
+        Object fileData = part.containsKey("file_data") ? part.get("file_data") : part.get("fileData");
+        if (fileData instanceof Map) {
+            Object uri = ((Map<?, ?>) fileData).get("file_uri");
+            if (uri == null) uri = ((Map<?, ?>) fileData).get("uri");
+            if (uri instanceof String) {
+                try {
+                    return restTemplate.getForObject(URI.create((String) uri), byte[].class);
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
+    }
+
+    private static String guessMimeType(String url) {
+        String lower = url == null ? "" : url.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".webp")) return "image/webp";
+        return "image/png";
     }
 }
