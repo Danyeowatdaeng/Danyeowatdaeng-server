@@ -64,6 +64,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         accessTokenCookie.setSecure(true); // HTTPS에서만 전송
         accessTokenCookie.setPath("/");
         accessTokenCookie.setMaxAge(30 * 60); // 30분
+        accessTokenCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
         response.addCookie(accessTokenCookie);
 
         // Refresh Token 쿠키 설정 (있는 경우)
@@ -73,6 +74,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             refreshTokenCookie.setSecure(true);
             refreshTokenCookie.setPath("/");
             refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7일
+            refreshTokenCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
             response.addCookie(refreshTokenCookie);
         }
 
@@ -83,6 +85,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         emailCookie.setSecure(true);
         emailCookie.setPath("/");
         emailCookie.setMaxAge(30 * 60); // 30분
+        emailCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
         response.addCookie(emailCookie);
         
         log.debug("OAuth2 쿠키 설정 완료: accessToken={}, refreshToken={}, email={}", 
