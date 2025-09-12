@@ -72,7 +72,7 @@ public class SecurityConfig {
         // 특정 도메인만 허용 (프로덕션)
         configuration.addAllowedOrigin("https://danyeowatdaeng.p-e.kr");
         configuration.addAllowedOrigin("https://www.danyeowatdaeng.p-e.kr");
-        configuration.addAllowedOrigin("https://www.danyeowatdaeng-one.vercel.app");
+        configuration.addAllowedOrigin("https://danyeowatdaeng-one.vercel.app");
         
         // 개발 환경 도메인 허용
         configuration.addAllowedOrigin("http://localhost:3000");
