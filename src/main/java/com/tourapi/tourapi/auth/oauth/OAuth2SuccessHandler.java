@@ -63,8 +63,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         accessTokenCookie.setHttpOnly(true);
         accessTokenCookie.setSecure(true); // HTTPS에서만 전송
         accessTokenCookie.setPath("/");
-        accessTokenCookie.setDomain("danyeowatdaeng.p-e.kr");
-        accessTokenCookie.setSameSite(SameSite.NONE);
         accessTokenCookie.setMaxAge(30 * 60); // 30분
         accessTokenCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
         response.addCookie(accessTokenCookie);
@@ -75,8 +73,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             refreshTokenCookie.setHttpOnly(true);
             refreshTokenCookie.setSecure(true);
             refreshTokenCookie.setPath("/");
-            refreshTokenCookie.setDomain("danyeowatdaeng.p-e.kr");
-            refreshTokenCookie.setSameSite(SameSite.NONE);
             refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7일
             refreshTokenCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
             response.addCookie(refreshTokenCookie);
@@ -87,8 +83,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             URLEncoder.encode(tokenResponse.email, StandardCharsets.UTF_8));
         emailCookie.setHttpOnly(false); // 프론트엔드에서 접근 가능
         emailCookie.setSecure(true);
-        emailCookie.setDomain("danyeowatdaeng.p-e.kr");
-        emailCookie.setSameSite(SameSite.NONE);
         emailCookie.setPath("/");
         emailCookie.setMaxAge(30 * 60); // 30분
         emailCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
