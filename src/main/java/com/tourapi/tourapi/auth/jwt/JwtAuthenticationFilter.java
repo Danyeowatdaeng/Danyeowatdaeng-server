@@ -33,6 +33,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // 헤더에서 토큰 추출
             String token = jwtProvider.resolveHeaderToken(request.getHeader(HttpHeaders.AUTHORIZATION), prefix);
+            
+            // 헤더에 토큰이 없으면 쿠키에서 토큰 추출
+            if (token == null) {
+                token = resolveCookieToken(request);
+            }
 
             // 토큰이 유효하면 인증 정보 저장 (sign-up 토큰 개념 제거)
             if (token != null && jwtProvider.validateToken(token)) {
@@ -60,6 +65,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         return userPrincipal;
+    }
+
+    private String resolveCookieToken(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        
+        for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+            if ("access_token".equals(cookie.getName())) {
+                log.debug("JWT_:FLT_:COOKIE:::Access token found in cookie");
+                return cookie.getValue();
+            }
+        }
+        
+        log.debug("JWT_:FLT_:COOKIE:::No access token found in cookies");
+        return null;
     }
 
     private void handleJwtException(HttpServletResponse response, JwtException e) throws IOException {
