@@ -3,15 +3,16 @@ package com.tourapi.tourapi.auth.oauth;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import com.tourapi.tourapi.auth.dto.TokenResponse;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     @Value("${app.auth.onboarding-redirect-url:/app/onboarding}")
     private String onboardingRedirectUrl;
+
+    @Value("${app.auth.cookie-domain:}")
+    private String cookieDomain;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, 
@@ -58,38 +62,38 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private void setTokenCookies(HttpServletResponse response, TokenResponse tokenResponse) {
         log.debug("OAuth2 쿠키 설정 시작: email={}", tokenResponse.email);
         
-        // Access Token 쿠키 설정
-        Cookie accessTokenCookie = new Cookie("access_token", tokenResponse.accessToken);
-        accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(true); // HTTPS에서만 전송
-        accessTokenCookie.setPath("/");
-        accessTokenCookie.setDomain("danyeowatdaeng.p-e.kr"); // 필요시 특정 도메인 설정
-        accessTokenCookie.setMaxAge(30 * 60); // 30분
-        accessTokenCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
-        response.addCookie(accessTokenCookie);
+        // Access Token 쿠키 (SameSite=None; Secure; Domain)
+        ResponseCookie.ResponseCookieBuilder accessBuilder = ResponseCookie.from("access_token", tokenResponse.accessToken)
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .sameSite("None")
+            .maxAge(Duration.ofMinutes(30));
+        if (cookieDomain != null && !cookieDomain.isBlank()) accessBuilder.domain(cookieDomain);
+        response.addHeader("Set-Cookie", accessBuilder.build().toString());
 
         // Refresh Token 쿠키 설정 (있는 경우)
         if (tokenResponse.refreshToken != null) {
-            Cookie refreshTokenCookie = new Cookie("refresh_token", tokenResponse.refreshToken);
-            refreshTokenCookie.setHttpOnly(true);
-            refreshTokenCookie.setSecure(true);
-            refreshTokenCookie.setPath("/");
-            refreshTokenCookie.setDomain("danyeowatdaeng.p-e.kr"); // 필요시 특정 도메인 설정
-            refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7일
-            refreshTokenCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
-            response.addCookie(refreshTokenCookie);
+            ResponseCookie.ResponseCookieBuilder refreshBuilder = ResponseCookie.from("refresh_token", tokenResponse.refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .sameSite("None")
+                .maxAge(Duration.ofDays(7));
+            if (cookieDomain != null && !cookieDomain.isBlank()) refreshBuilder.domain(cookieDomain);
+            response.addHeader("Set-Cookie", refreshBuilder.build().toString());
         }
 
         // 사용자 정보 쿠키 설정 (선택사항)
-        Cookie emailCookie = new Cookie("user_email", 
-            URLEncoder.encode(tokenResponse.email, StandardCharsets.UTF_8));
-        emailCookie.setHttpOnly(false); // 프론트엔드에서 접근 가능
-        emailCookie.setSecure(true);
-        emailCookie.setPath("/");
-        // emailCookie.setDomain("danyeowatdaeng.p-e.kr"); // 필요시 특정 도메인 설정
-        emailCookie.setMaxAge(30 * 60); // 30분
-        emailCookie.setAttribute("SameSite", "None"); // 크로스 사이트 요청에서도 쿠키 전송
-        response.addCookie(emailCookie);
+        ResponseCookie.ResponseCookieBuilder emailBuilder = ResponseCookie.from("user_email", 
+            URLEncoder.encode(tokenResponse.email, StandardCharsets.UTF_8))
+            .httpOnly(false)
+            .secure(true)
+            .path("/")
+            .sameSite("None")
+            .maxAge(Duration.ofMinutes(30));
+        if (cookieDomain != null && !cookieDomain.isBlank()) emailBuilder.domain(cookieDomain);
+        response.addHeader("Set-Cookie", emailBuilder.build().toString());
         
         log.debug("OAuth2 쿠키 설정 완료: accessToken={}, refreshToken={}, email={}", 
             "설정됨", tokenResponse.refreshToken != null ? "설정됨" : "없음", "설정됨");

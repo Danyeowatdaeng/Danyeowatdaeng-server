@@ -1,12 +1,8 @@
 package com.tourapi.tourapi.web.controller.petAvatar;
 
-import java.net.URI;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,11 +10,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -28,12 +23,13 @@ import com.tourapi.tourapi.common.exception.ApiResponse;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarErrorStatus;
 import com.tourapi.tourapi.common.exception.petAvatar.status.PetAvatarSuccessStatus;
-import com.tourapi.tourapi.petAvatar.config.PetAvatarProperties;
 import com.tourapi.tourapi.petAvatar.dto.PetAvatarListResponse;
 import com.tourapi.tourapi.petAvatar.dto.PetAvatarResponse;
+import com.tourapi.tourapi.petAvatar.dto.PetAvatarUploadResponse;
 import com.tourapi.tourapi.petAvatar.enums.PetAvatarStyle;
 import com.tourapi.tourapi.petAvatar.enums.PetType;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
+import com.tourapi.tourapi.petAvatar.service.S3Service;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -49,7 +45,11 @@ import lombok.extern.slf4j.Slf4j;
 public class PetAvatarController {
 
     private final PetAvatarService petAvatarService;
-    private final PetAvatarProperties properties;
+    private final S3Service s3Service;
+
+    private static final String FIXED_PROMPT = """
+역할: 너는 ‘사진을 픽셀아트로 재해석’하는 일러스트레이터다.  목표: 첨부한 동물 사진(강아지/고양이 등)을 참고해, 원본의 개체 정체성(털색/무늬/표정/귀 모양 등)을 보존하면서 픽셀아트 스타일로 다시 그려라.  출력 규격: - 해상도: {512|768|1024} × {512|768|1024} (정사각 권장) - 팔레트: {12|16|24}색 제한, 큰 면적에만 약한 디더링, 그라디언트 최소화 - 라인: 1픽셀 외곽선(검정/짙은 갈색), 과도한 윤광·블러 금지 - 명암: 2~3단 셀셰이딩 - 배경: {투명 | 파스텔 단색 | 단순화된 아이콘 2~3개}, 텍스트/워터마크 금지 - 포맷: PNG {투명 배경: 사용/미사용}  리라이팅 지침: - 동물종과 특징 보존: 종(개/고양이), 대표 무늬(예: 이마의 흰 무늬, 등줄무늬, 코 색), 귀/코/눈 형태를 유지 - 구도: 얼굴·귀·코가 잘리지 않게 중앙 배치, 원본 포즈 최대한 유지 - 단순화: 사진 속 복잡한 바닥·담요 무늬는 2~3개 색 블록으로 축약 - 스타일 강도: {낮음|중간|높음} (원본 유사성 우선 → 스타일은 보조)  금지(네거티브): - 사진풍 질감·유화/만화 잉크 효과·과도한 그라디언트·텍스트/로고/워터마크 - 과장된 데포르메로 원본 개체 식별 불가 상태 - base64 인코딩 문자열 절대 금지.   산출물: 위 조건을 만족하는 최종 1장(필요 시 2~3안 제안 가능).
+""";
 
     // PetAvatar 목록 조회 (기본 + 커스텀)
     @GetMapping
@@ -180,15 +180,13 @@ public class PetAvatarController {
         return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_DETAIL_FOUND, response);
     }
 
-    // JwtAuthenticationFilter 가 SecurityContext 에 주입한 UserPrincipal 을 직접 사용합니다.
-
     // === MVP Upload (moved from PetAvatarMvpController) ===
     @PostMapping(value = "/mvp-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> generateByUpload(@RequestPart("file") MultipartFile file,
-                                              @RequestPart("prompt") String prompt) {
+    public ResponseEntity<?> generateByUpload(@RequestPart("file") MultipartFile file) {
         try {
             byte[] imageBytes = file.getBytes();
-            byte[] out = petAvatarService.generateAvatarFromUpload(imageBytes, file.getOriginalFilename(), prompt);
+            String effectivePrompt = FIXED_PROMPT;
+            byte[] out = petAvatarService.generateAvatarFromUpload(imageBytes, file.getOriginalFilename(), effectivePrompt);
             return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_CONVERTED, out);
         } catch (ResponseStatusException e) {
             org.springframework.http.HttpStatusCode status = e.getStatusCode();
@@ -203,14 +201,25 @@ public class PetAvatarController {
         }
     }
 
-    private static PetAvatarErrorStatus mapGeminiHttpStatus(org.springframework.web.client.HttpStatusCodeException e) {
-        org.springframework.http.HttpStatusCode status = e.getStatusCode();
-        if (status.value() == HttpStatus.UNAUTHORIZED.value()) return PetAvatarErrorStatus.GEMINI_INVALID_API_KEY;
-        if (status.value() == HttpStatus.FORBIDDEN.value()) return PetAvatarErrorStatus.GEMINI_FORBIDDEN;
-        if (status.value() == HttpStatus.NOT_FOUND.value()) return PetAvatarErrorStatus.GEMINI_MODEL_NOT_FOUND;
-        if (status.value() == HttpStatus.TOO_MANY_REQUESTS.value()) return PetAvatarErrorStatus.GEMINI_RATE_LIMITED;
-        if (status.is4xxClientError()) return PetAvatarErrorStatus.GEMINI_BAD_REQUEST;
-        if (status.is5xxServerError()) return PetAvatarErrorStatus.GEMINI_UPSTREAM_ERROR;
-        return PetAvatarErrorStatus.GEMINI_UNKNOWN_ERROR;
+    @PostMapping(value = "/mvp-upload-to-s3", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> uploadGeneratedResultToS3(@RequestBody String payload) {
+        try {
+            S3Service.UploadResult saved = s3Service.uploadStringAutoDetect(payload);
+            PetAvatarUploadResponse dto = PetAvatarUploadResponse.builder()
+                    .key(saved.key())
+                    .url(saved.url())
+                    .build();
+            return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_CONVERTED, dto);
+        } catch (ResponseStatusException e) {
+            org.springframework.http.HttpStatusCode status = e.getStatusCode();
+            if (status.value() == HttpStatus.BAD_REQUEST.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_BAD_REQUEST);
+            if (status.value() == HttpStatus.FORBIDDEN.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_FORBIDDEN);
+            if (status.value() == HttpStatus.UNAUTHORIZED.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_INVALID_API_KEY);
+            if (status.value() == HttpStatus.NOT_FOUND.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_MODEL_NOT_FOUND);
+            if (status.value() == HttpStatus.TOO_MANY_REQUESTS.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_RATE_LIMITED);
+            return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UPSTREAM_ERROR);
+        } catch (Exception e) {
+            return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UNKNOWN_ERROR);
+        }
     }
 }

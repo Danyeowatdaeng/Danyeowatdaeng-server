@@ -51,4 +51,18 @@ public interface PetAvatarService {
 
     // MVP: 업로드된 이미지로 아바타 생성 (바이트 반환)
     byte[] generateAvatarFromUpload(byte[] imageBytes, String filename, String prompt);
+    
+    // S3 기반: S3 키로 아바타 생성
+    PetAvatar generateAvatarFromS3Key(String s3Key, String prompt, Long memberId);
+    
+    // S3 기반: 아바타 선택 및 저장
+    PetAvatar saveAvatarSelection(Long memberId, String resultKey, String thumbKey, 
+                                String prompt, String model, Boolean setAsPrimary);
+    
+    // 대표 아바타 설정/해제
+    void setPrimaryAvatar(Long memberId, Long petAvatarId);
+    void unsetPrimaryAvatar(Long memberId, Long petAvatarId);
+    
+    // 사용자의 대표 아바타 조회
+    PetAvatar getPrimaryAvatarByMemberId(Long memberId);
 }

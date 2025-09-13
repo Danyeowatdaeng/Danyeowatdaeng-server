@@ -263,4 +263,35 @@ public class PetAvatarServiceImpl implements PetAvatarService {
         if (lower.endsWith(".webp")) return "image/webp";
         return "image/png";
     }
+
+    @Override
+    public PetAvatar generateAvatarFromS3Key(String s3Key, String prompt, Long memberId) {
+        // TODO: S3Service를 주입받아서 구현
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PetAvatar saveAvatarSelection(Long memberId, String resultKey, String thumbKey, 
+                                       String prompt, String model, Boolean setAsPrimary) {
+        // TODO: S3Service를 주입받아서 구현
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public void setPrimaryAvatar(Long memberId, Long petAvatarId) {
+        // TODO: 트랜잭션으로 기존 대표 아바타 해제 후 새로 설정
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public void unsetPrimaryAvatar(Long memberId, Long petAvatarId) {
+        // TODO: 대표 아바타 해제
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public PetAvatar getPrimaryAvatarByMemberId(Long memberId) {
+        // TODO: 사용자의 대표 아바타 조회
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
 }

@@ -60,6 +60,7 @@ app:
     onboarding-redirect-url: ${APP_AUTH_ONBOARDING_REDIRECT_URL}
 
 
+
 aws:
   s3:
     bucket: ${AWS_S3_BUCKET:}
