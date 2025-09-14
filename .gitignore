@@ -40,3 +40,10 @@ out/
 .env
 .env.*
 
+### Security Keys ###
+config/vertex-ai-key.json
+config/*-key.json
+config/*.json
+*.key
+*.pem
+

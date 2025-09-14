@@ -76,4 +76,16 @@ server:
     include-stacktrace: never
   forward-headers-strategy: framework 
 
+app:
+  auth:
+    cookie-domain: danyeowatdaeng.p-e.kr
+    cookie-secure: true
 
+# AWS S3 설정 (프로덕션환경)
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET:pet-avatar-prod-apne2}
+    region: ${AWS_S3_REGION:ap-northeast-2}
+    cloudfrontDomain: ${AWS_CLOUDFRONT_DOMAIN:https://cdn.danyeowatdaeng.p-e.kr}
+    presignExpireSeconds: ${AWS_PRESIGN_EXPIRE_SECONDS:300}  # 5분 (프로덕션에서는 더 짧게)
+    maxFileSize: ${AWS_S3_MAX_FILE_SIZE:10485760}  # 10MB
