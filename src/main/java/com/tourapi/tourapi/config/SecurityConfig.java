@@ -59,8 +59,8 @@ public class SecurityConfig {
                     .failureHandler((request, response, exception) -> {
                         response.sendRedirect("/login?error=oauth_failed");
                     })
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            );
+            // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

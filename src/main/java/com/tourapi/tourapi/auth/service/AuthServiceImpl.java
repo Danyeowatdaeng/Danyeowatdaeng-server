@@ -95,6 +95,7 @@ public class AuthServiceImpl implements AuthService {
             if (!isSignUpCompleted) {
                 logger.info("OAuth 콜백 로그인 - 가입 미완료 상태: memberId={}, email={}, 액세스 토큰만 발급", id, email);
                 String accessToken = jwtProvider.createAccessToken(id, email, name, member.getRole(), false);
+                logger.info(accessToken);
                 return new TokenResponse(accessToken, email, name, false);
             }
 
