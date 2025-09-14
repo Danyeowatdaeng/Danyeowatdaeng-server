@@ -139,6 +139,24 @@ public class SwaggerConfig {
                 .build();
     }
 
+    // mypet/다이어리 api swagger
+    @Bean
+    public GroupedOpenApi myPetGroup() {
+        return GroupedOpenApi.builder()
+                .group("MyPet")
+                .pathsToMatch("/api/mypet/**")
+                .build();
+    }
+
+    // wishlist api swagger
+    @Bean
+    public GroupedOpenApi wishlistGroup() {
+        return GroupedOpenApi.builder()
+                .group("Wishlist")
+                .pathsToMatch("/api/wishlist/**")
+                .build();
+    }
+
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {
         if (enumClass == null || codes == null) return;
         try {
