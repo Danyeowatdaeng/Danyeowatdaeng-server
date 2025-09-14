@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -188,26 +189,37 @@ public class PetAvatarServiceImpl implements PetAvatarService {
         log.info("Base64 인코딩 크기: {} characters", b64.length());
         log.info("프롬프트: {}", prompt);
         
-        Map<String, Object> inlineData = Map.of(
-            "mime_type", mime,
-            "data", b64
+        Map<String, Object> textPart = Map.of("text",
+            // 편집 지시를 명확히: "무엇을 유지하고 무엇을 바꿀지"
+            prompt
         );
+
+        Map<String, Object> imagePart = Map.of(
+            "inline_data", Map.of(
+                "mime_type", mime,   // e.g., "image/png"
+                "data", b64          // Base64(파일)
+            )
+        );
+
+
+        Map<String, Object> content = Map.of("parts", new Object[]{textPart, imagePart});
+
         Map<String, Object> body = Map.of(
-            "contents", new Object[]{
-                Map.of(
-                    "parts", new Object[]{
-                        Map.of("text", prompt),
-                        Map.of("inline_data", inlineData)
-                    }
-                )
-            }
+            "contents", new Object[]{content}
+            // , "generationConfig", genCfg // <- SDK 쓸 때만
         );
+        
+        log.info("=== 요청 구조 검증 ===");
+        log.info("textPart: {}", textPart);
+        log.info("imagePart 키들: {}", imagePart.keySet());
+        log.info("content 키들: {}", content.keySet());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         try {
             log.info("Gemini API 호출 중...");
+            @SuppressWarnings("unchecked")
             ResponseEntity<Map<String, Object>> resp = restTemplate.postForEntity(URI.create(endpoint), new HttpEntity<>(body, headers), (Class<Map<String, Object>>)(Class<?>)Map.class);
             log.info("Gemini API 응답 상태: {}", resp.getStatusCode());
             
@@ -218,6 +230,11 @@ public class PetAvatarServiceImpl implements PetAvatarService {
             }
             
             log.info("Gemini API 응답 구조: {}", responseBody.keySet());
+            
+            // 응답 전체를 더 자세히 로깅 (민감한 정보 제외)
+            log.info("=== 응답 상세 정보 ===");
+            log.info("응답 크기: {} characters", responseBody.toString().length());
+            
             byte[] out = extractGeminiImageBytes(restTemplate, responseBody);
             log.info("이미지 추출 완료. 크기: {} bytes", out.length);
             return out;
@@ -237,54 +254,130 @@ public class PetAvatarServiceImpl implements PetAvatarService {
     }
 
     private static byte[] extractGeminiImageBytes(RestTemplate restTemplate, Map<?, ?> responseBody) {
+        // 응답 구조 디버깅을 위한 로깅 추가
+        log.info("=== Gemini 응답 구조 분석 시작 ===");
+        log.info("응답 키들: {}", responseBody.keySet());
+        
+        // finishReason 확인
         Object candidates = responseBody.get("candidates");
         if (!(candidates instanceof java.util.List) || ((java.util.List<?>) candidates).isEmpty()) {
+            log.error("candidates가 없거나 비어있음");
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No candidates in response");
         }
+        
         Object first = ((java.util.List<?>) candidates).get(0);
         if (!(first instanceof Map)) {
+            log.error("candidates[0]이 Map이 아님: {}", first.getClass().getSimpleName());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Invalid candidates[0]");
         }
-        Object content = ((Map<?, ?>) first).get("content");
+        
+        Map<?, ?> candidate = (Map<?, ?>) first;
+        log.info("candidate 키들: {}", candidate.keySet());
+        
+        // finishReason 확인
+        Object finishReason = candidate.get("finishReason");
+        if (finishReason != null) {
+            log.info("finishReason: {}", finishReason);
+            if ("SAFETY".equals(String.valueOf(finishReason))) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Content blocked by safety filters");
+            }
+        }
+        
+        Object content = candidate.get("content");
         if (!(content instanceof Map)) {
+            log.error("content가 Map이 아님: {}", content != null ? content.getClass().getSimpleName() : "null");
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Missing content");
         }
-        Object parts = ((Map<?, ?>) content).get("parts");
+        
+        Map<?, ?> contentMap = (Map<?, ?>) content;
+        log.info("content 키들: {}", contentMap.keySet());
+        
+        Object parts = contentMap.get("parts");
         if (!(parts instanceof java.util.List)) {
+            log.error("parts가 List가 아님: {}", parts != null ? parts.getClass().getSimpleName() : "null");
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Missing parts");
         }
-        for (Object p : (java.util.List<?>) parts) {
-            if (!(p instanceof Map)) continue;
+        
+        java.util.List<?> partsList = (java.util.List<?>) parts;
+        log.info("parts 개수: {}", partsList.size());
+        
+        for (int i = 0; i < partsList.size(); i++) {
+            Object p = partsList.get(i);
+            if (!(p instanceof Map)) {
+                log.warn("parts[{}]이 Map이 아님: {}", i, p != null ? p.getClass().getSimpleName() : "null");
+                continue;
+            }
+            
             Map<?, ?> part = (Map<?, ?>) p;
+            log.info("part[{}] 키들: {}", i, part.keySet());
 
+            // inline_data 또는 inlineData 확인
             Object inline = part.containsKey("inline_data") ? part.get("inline_data") : part.get("inlineData");
-            if (inline instanceof Map && ((Map<?, ?>) inline).containsKey("data")) {
-                String data = String.valueOf(((Map<?, ?>) inline).get("data"));
-                return java.util.Base64.getDecoder().decode(data);
+            if (inline instanceof Map) {
+                Map<?, ?> inlineMap = (Map<?, ?>) inline;
+                log.info("inline_data 키들: {}", inlineMap.keySet());
+                if (inlineMap.containsKey("data")) {
+                    String data = String.valueOf(inlineMap.get("data"));
+                    log.info("inline_data에서 이미지 데이터 발견. 크기: {} characters", data.length());
+                    return java.util.Base64.getDecoder().decode(data);
+                }
             }
 
+            // media 확인
             Object media = part.get("media");
-            if (media instanceof Map && ((Map<?, ?>) media).containsKey("data")) {
-                String data = String.valueOf(((Map<?, ?>) media).get("data"));
-                return java.util.Base64.getDecoder().decode(data);
+            if (media instanceof Map) {
+                Map<?, ?> mediaMap = (Map<?, ?>) media;
+                log.info("media 키들: {}", mediaMap.keySet());
+                if (mediaMap.containsKey("data")) {
+                    String data = String.valueOf(mediaMap.get("data"));
+                    log.info("media에서 이미지 데이터 발견. 크기: {} characters", data.length());
+                    return java.util.Base64.getDecoder().decode(data);
+                }
             }
 
+            // file_uri 다운로드 시도
             byte[] fetched = tryDownloadByFileUri(restTemplate, part);
-            if (fetched != null && fetched.length > 0) return fetched;
+            if (fetched != null && fetched.length > 0) {
+                log.info("file_uri에서 이미지 다운로드 성공. 크기: {} bytes", fetched.length);
+                return fetched;
+            }
         }
+        
+        log.error("모든 part에서 이미지 데이터를 찾지 못함");
+        log.error("전체 응답 구조: {}", responseBody);
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "No inline image data found");
     }
 
     private static byte[] tryDownloadByFileUri(RestTemplate restTemplate, Map<?, ?> part) {
+        log.info("file_uri 다운로드 시도 중...");
+        
         Object fileData = part.containsKey("file_data") ? part.get("file_data") : part.get("fileData");
         if (fileData instanceof Map) {
-            Object uri = ((Map<?, ?>) fileData).get("file_uri");
-            if (uri == null) uri = ((Map<?, ?>) fileData).get("uri");
+            Map<?, ?> fileDataMap = (Map<?, ?>) fileData;
+            log.info("fileData 키들: {}", fileDataMap.keySet());
+            
+            Object uri = fileDataMap.get("file_uri");
+            if (uri == null) uri = fileDataMap.get("uri");
+            
             if (uri instanceof String) {
+                String uriString = (String) uri;
+                log.info("파일 URI 발견: {}", uriString);
                 try {
-                    return restTemplate.getForObject(URI.create((String) uri), byte[].class);
-                } catch (Exception ignored) {}
+                    byte[] result = restTemplate.getForObject(URI.create(uriString), byte[].class);
+                    if (result != null && result.length > 0) {
+                        log.info("파일 다운로드 성공. 크기: {} bytes", result.length);
+                        return result;
+                    } else {
+                        log.warn("파일 다운로드 결과가 null이거나 비어있음");
+                    }
+                } catch (Exception e) {
+                    log.warn("파일 다운로드 실패: {}", e.getMessage());
+                }
+            } else {
+                log.info("URI가 String이 아님: {}", uri != null ? uri.getClass().getSimpleName() : "null");
             }
+        } else {
+            log.info("fileData가 Map이 아님: {}", fileData != null ? fileData.getClass().getSimpleName() : "null");
         }
         return null;
     }
