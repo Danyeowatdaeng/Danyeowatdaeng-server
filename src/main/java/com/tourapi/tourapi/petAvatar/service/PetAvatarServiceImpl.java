@@ -149,18 +149,30 @@ public class PetAvatarServiceImpl implements PetAvatarService {
 
     @Override
     public byte[] generateAvatarFromUpload(byte[] imageBytes, String filename, String prompt) {
+        log.info("=== PetAvatar 생성 시작 ===");
+        log.info("서비스 활성화 상태: {}", properties.isEnabled());
+        log.info("프로바이더: {}", properties.getProvider());
+        log.info("파일명: {}", filename);
+        log.info("이미지 크기: {} bytes", imageBytes != null ? imageBytes.length : "null");
+        log.info("프롬프트 길이: {} characters", prompt != null ? prompt.length() : "null");
+        
         if (!properties.isEnabled()) {
+            log.error("PetAvatar 서비스가 비활성화되어 있습니다.");
             throw new PetAvatarHandler(PetAvatarErrorStatus.GEMINI_SERVICE_DISABLED);
         }
         if ("mock".equalsIgnoreCase(properties.getProvider())) {
+            log.info("Mock 모드로 실행 - 빈 바이트 배열 반환");
             return new byte[]{};
         }
         if (imageBytes == null || imageBytes.length == 0) {
+            log.error("이미지 데이터가 null이거나 비어있습니다. 크기: {}", imageBytes != null ? imageBytes.length : "null");
             throw new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_INVALID_IMAGE_FORMAT);
         }
         if ("gemini".equalsIgnoreCase(properties.getProvider())) {
+            log.info("Gemini API 호출 시작");
             return callGeminiImageGenerateFromBytes(new RestTemplate(), imageBytes, filename, prompt);
         }
+        log.error("지원하지 않는 프로바이더: {}", properties.getProvider());
         throw new PetAvatarHandler(PetAvatarErrorStatus.PROVIDER_UNSUPPORTED);
     }
 
@@ -170,6 +182,12 @@ public class PetAvatarServiceImpl implements PetAvatarService {
         String endpoint = properties.getProviderBaseUrl() + "/" + modelPath + "?key=" + properties.getApiKey();
 
         String mime = guessMimeType(filename == null ? null : filename);
+        log.info("=== Gemini API 요청 정보 ===");
+        log.info("엔드포인트: {}", endpoint.replaceAll("key=[^&]+", "key=***"));
+        log.info("MIME 타입: {}", mime);
+        log.info("Base64 인코딩 크기: {} characters", b64.length());
+        log.info("프롬프트: {}", prompt);
+        
         Map<String, Object> inlineData = Map.of(
             "mime_type", mime,
             "data", b64
@@ -189,16 +207,31 @@ public class PetAvatarServiceImpl implements PetAvatarService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         try {
+            log.info("Gemini API 호출 중...");
             ResponseEntity<Map<String, Object>> resp = restTemplate.postForEntity(URI.create(endpoint), new HttpEntity<>(body, headers), (Class<Map<String, Object>>)(Class<?>)Map.class);
+            log.info("Gemini API 응답 상태: {}", resp.getStatusCode());
+            
             Map<String, Object> responseBody = resp.getBody();
             if (responseBody == null) {
+                log.error("Gemini API에서 빈 응답을 받았습니다.");
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Empty response from Gemini");
             }
+            
+            log.info("Gemini API 응답 구조: {}", responseBody.keySet());
             byte[] out = extractGeminiImageBytes(restTemplate, responseBody);
+            log.info("이미지 추출 완료. 크기: {} bytes", out.length);
             return out;
         } catch (HttpStatusCodeException e) {
+            log.error("=== Gemini API HTTP 에러 ===");
+            log.error("상태 코드: {}", e.getStatusCode());
+            log.error("응답 본문: {}", e.getResponseBodyAsString());
+            log.error("요청 URL: {}", endpoint.replaceAll("key=[^&]+", "key=***"));
             throw new ResponseStatusException(e.getStatusCode(), e.getResponseBodyAsString());
         } catch (Exception e) {
+            log.error("=== Gemini API 일반 에러 ===");
+            log.error("에러 메시지: {}", e.getMessage());
+            log.error("에러 타입: {}", e.getClass().getSimpleName());
+            e.printStackTrace();
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, e.getMessage(), e);
         }
     }
@@ -258,10 +291,18 @@ public class PetAvatarServiceImpl implements PetAvatarService {
 
     private static String guessMimeType(String url) {
         String lower = url == null ? "" : url.toLowerCase();
-        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-        if (lower.endsWith(".png")) return "image/png";
-        if (lower.endsWith(".webp")) return "image/webp";
-        return "image/png";
+        String mimeType;
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+            mimeType = "image/jpeg";
+        } else if (lower.endsWith(".png")) {
+            mimeType = "image/png";
+        } else if (lower.endsWith(".webp")) {
+            mimeType = "image/webp";
+        } else {
+            mimeType = "image/png"; // 기본값
+        }
+        log.info("파일명 '{}'에서 추정한 MIME 타입: {}", url, mimeType);
+        return mimeType;
     }
 
     @Override

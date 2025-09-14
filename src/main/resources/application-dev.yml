@@ -24,7 +24,7 @@ logging:
     org.springframework.web: INFO
 
 jwt:
-  secret: "your-super-secret-key-that-should-be-long-and-secure-for-development"
+  secret: "your-super-secret-key-that-should-be-long-and-secure-for-production"
   expirationMs: 7200000 # 2시간 (밀리초)
   refreshTokenExpirationMs: 2592000000 # 30일 (밀리초)
   tokenPrefix: "Bearer "

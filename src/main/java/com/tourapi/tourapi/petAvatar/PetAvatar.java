@@ -47,7 +47,7 @@ public class PetAvatar extends BaseEntity {
     @Column(name = "height")
     private Integer height; // 이미지 높이
 
-    @Column(name = "primary", nullable = false)
+    @Column(name = "is_primary", nullable = false)
     private Boolean primary = false; // 대표 아바타 여부
 
     @Column(name = "version", nullable = false)

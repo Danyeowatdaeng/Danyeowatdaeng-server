@@ -4,10 +4,6 @@ petavatar:
   providerBaseUrl: https://generativelanguage.googleapis.com/v1beta
   timeoutMs: 30000
   apiKey: ${GEMINI_API_KEY:}
-  vertexProjectId: ${VERTEX_PROJECT_ID:}
-  vertexLocation: ${VERTEX_LOCATION:us-central1}
-  vertexModel: ${VERTEX_IMAGEN_MODEL:imagegeneration@006}
-  vertexAccessToken: ${VERTEX_ACCESS_TOKEN:}
 
 
 

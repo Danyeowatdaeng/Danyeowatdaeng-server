@@ -109,3 +109,4 @@ public interface S3Service {
      */
     String generateThumbnailKey(String originalKey, int size);
 }
+

@@ -3,6 +3,7 @@ package com.tourapi.tourapi.web.controller.petAvatar;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +11,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -181,45 +181,118 @@ public class PetAvatarController {
     }
 
     // === MVP Upload (moved from PetAvatarMvpController) ===
-    @PostMapping(value = "/mvp-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/transform-mypet", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "펫 이미지를 픽셀아트로 변환", 
+               description = "업로드된 펫 이미지를 Gemini AI를 사용하여 픽셀아트 스타일로 변환합니다. " +
+                           "지원 형식: PNG, JPEG, WebP. 최대 크기: 10MB. " +
+                           "변환된 이미지는 PNG 형식으로 직접 반환됩니다.")
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {
+        "PET4050", "PET4014", "PET4056", "PET4052", "PET4051", 
+        "PET4053", "PET4054", "PET4059", "PET4060", "PET4061"
+    })
     public ResponseEntity<?> generateByUpload(@RequestPart("file") MultipartFile file) {
+        log.info("=== PetAvatar 업로드 요청 시작 ===");
+        log.info("파일명: {}", file.getOriginalFilename());
+        log.info("파일 크기: {} bytes", file.getSize());
+        log.info("Content Type: {}", file.getContentType());
+        
         try {
             byte[] imageBytes = file.getBytes();
             String effectivePrompt = FIXED_PROMPT;
+            log.info("실제 이미지 바이트 크기: {} bytes", imageBytes.length);
+            log.info("사용할 프롬프트: {}", effectivePrompt);
+            
             byte[] out = petAvatarService.generateAvatarFromUpload(imageBytes, file.getOriginalFilename(), effectivePrompt);
-            return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_CONVERTED, out);
+            log.info("PetAvatar 생성 성공. 결과 크기: {} bytes", out.length);
+            
+            // 이미지 파일로 직접 반환 (JSON 변환 없이)
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
+            headers.setContentLength(out.length);
+            headers.set("Content-Disposition", "inline; filename=\"pet-avatar.png\"");
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(out);
         } catch (ResponseStatusException e) {
+            log.error("=== ResponseStatusException 발생 ===");
+            log.error("상태 코드: {}", e.getStatusCode());
+            log.error("에러 메시지: {}", e.getReason());
+            log.error("응답 본문: {}", e.getReason());
+            
             org.springframework.http.HttpStatusCode status = e.getStatusCode();
-            if (status.value() == HttpStatus.BAD_REQUEST.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_BAD_REQUEST);
-            if (status.value() == HttpStatus.FORBIDDEN.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_FORBIDDEN);
-            if (status.value() == HttpStatus.UNAUTHORIZED.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_INVALID_API_KEY);
-            if (status.value() == HttpStatus.NOT_FOUND.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_MODEL_NOT_FOUND);
-            if (status.value() == HttpStatus.TOO_MANY_REQUESTS.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_RATE_LIMITED);
+            if (status.value() == HttpStatus.BAD_REQUEST.value()) {
+                log.error("BAD_REQUEST 에러 - Gemini API 요청 형식 오류");
+                return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_BAD_REQUEST);
+            }
+            if (status.value() == HttpStatus.FORBIDDEN.value()) {
+                log.error("FORBIDDEN 에러 - Gemini API 접근 거부");
+                return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_FORBIDDEN);
+            }
+            if (status.value() == HttpStatus.UNAUTHORIZED.value()) {
+                log.error("UNAUTHORIZED 에러 - API 키 문제");
+                return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_INVALID_API_KEY);
+            }
+            if (status.value() == HttpStatus.NOT_FOUND.value()) {
+                log.error("NOT_FOUND 에러 - 모델을 찾을 수 없음");
+                return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_MODEL_NOT_FOUND);
+            }
+            if (status.value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+                log.error("TOO_MANY_REQUESTS 에러 - 요청 한도 초과");
+                return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_RATE_LIMITED);
+            }
+            log.error("기타 HTTP 에러: {}", status);
             return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UPSTREAM_ERROR);
         } catch (Exception e) {
+            log.error("=== 일반 Exception 발생 ===");
+            log.error("에러 타입: {}", e.getClass().getSimpleName());
+            log.error("에러 메시지: {}", e.getMessage());
+            e.printStackTrace();
             return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UNKNOWN_ERROR);
         }
     }
 
-    @PostMapping(value = "/mvp-upload-to-s3", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> uploadGeneratedResultToS3(@RequestBody String payload) {
+    // 개선된 방식: Multipart로 직접 S3 업로드
+    @PostMapping(value = "/upload-to-s3", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "이미지를 S3에 업로드", 
+               description = "업로드된 이미지 파일을 AWS S3에 저장하고 접근 가능한 URL을 반환합니다. " +
+                           "지원 형식: PNG, JPEG, WebP, GIF. 최대 크기: 10MB. " +
+                           "업로드된 파일은 고유한 키로 저장되며 CDN URL이 제공됩니다.")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"INTERNAL_SERVER_ERROR"})
+    @ApiErrorCodeExample(value = PetAvatarErrorStatus.class, codes = {"PET4060"})
+    public ResponseEntity<?> uploadGeneratedResultToS3(@RequestPart("file") MultipartFile file) {
+        log.info("=== S3 업로드 요청 시작 ===");
+        log.info("파일명: {}", file.getOriginalFilename());
+        log.info("파일 크기: {} bytes", file.getSize());
+        log.info("Content Type: {}", file.getContentType());
+        
         try {
-            S3Service.UploadResult saved = s3Service.uploadStringAutoDetect(payload);
+            byte[] imageBytes = file.getBytes();
+            String filename = file.getOriginalFilename();
+            String mimeType = file.getContentType();
+            
+            // S3에 직접 업로드
+            String key = generateS3Key(filename);
+            S3Service.UploadResult saved = s3Service.uploadBytes(imageBytes, key, mimeType);
+            
             PetAvatarUploadResponse dto = PetAvatarUploadResponse.builder()
                     .key(saved.key())
                     .url(saved.url())
                     .build();
+            
+            log.info("S3 업로드 성공. Key: {}, URL: {}", saved.key(), saved.url());
             return ApiResponse.onSuccess(PetAvatarSuccessStatus.PET_AVATAR_CONVERTED, dto);
-        } catch (ResponseStatusException e) {
-            org.springframework.http.HttpStatusCode status = e.getStatusCode();
-            if (status.value() == HttpStatus.BAD_REQUEST.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_BAD_REQUEST);
-            if (status.value() == HttpStatus.FORBIDDEN.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_FORBIDDEN);
-            if (status.value() == HttpStatus.UNAUTHORIZED.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_INVALID_API_KEY);
-            if (status.value() == HttpStatus.NOT_FOUND.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_MODEL_NOT_FOUND);
-            if (status.value() == HttpStatus.TOO_MANY_REQUESTS.value()) return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_RATE_LIMITED);
-            return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UPSTREAM_ERROR);
         } catch (Exception e) {
+            log.error("S3 업로드 실패", e);
             return ApiResponse.onFailure(PetAvatarErrorStatus.GEMINI_UNKNOWN_ERROR);
         }
+    }
+    
+    private String generateS3Key(String filename) {
+        String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd/HHmmss"));
+        String extension = filename != null && filename.contains(".") 
+            ? filename.substring(filename.lastIndexOf(".")) 
+            : ".png";
+        return String.format("pet-avatars/%s_%s%s", timestamp, java.util.UUID.randomUUID().toString().substring(0, 8), extension);
     }
 }
