@@ -113,13 +113,13 @@ public class PetAvatarServiceImpl implements PetAvatarService {
     @Override
     @Transactional
     public PetAvatar createCustomPetAvatar(PetType petType, String displayName, 
-                                         String imageUrl, String originalImageUrl, 
+                                         String imageUrl, 
                                          PetAvatarStyle style, Long memberId) {
         // 고유한 코드 생성
         String code = "CUSTOM_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         
         PetAvatar customPetAvatar = PetAvatar.createCustom(
-                petType, code, displayName, imageUrl, originalImageUrl, style, memberId
+                petType, code, displayName, imageUrl, style, memberId
         );
         
         PetAvatar savedPetAvatar = petAvatarRepository.save(customPetAvatar);
@@ -453,8 +453,7 @@ public class PetAvatarServiceImpl implements PetAvatarService {
     @Transactional
     public PetAvatar createCustomPetAvatarFromStorage(PetType petType, String displayName,
                                                      String s3Key, String cdnUrl, String mime,
-                                                     PetAvatarStyle style, Long memberId,
-                                                     Boolean setPrimary) {
+                                                     PetAvatarStyle style, Long memberId) {
         if (petType == null || displayName == null || displayName.isBlank() || s3Key == null || s3Key.isBlank()) {
             throw new IllegalArgumentException("petType, displayName, s3Key are required");
         }
@@ -470,10 +469,8 @@ public class PetAvatarServiceImpl implements PetAvatarService {
                 (mime == null || mime.isBlank()) ? "image/png" : mime,
                 null,
                 null,
-                null,
                 style != null ? style : PetAvatarStyle.DEFAULT,
-                memberId,
-                setPrimary != null ? setPrimary : Boolean.FALSE
+                memberId
         );
 
         return petAvatarRepository.save(avatar);

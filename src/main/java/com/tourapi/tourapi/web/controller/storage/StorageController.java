@@ -3,13 +3,9 @@ package com.tourapi.tourapi.web.controller.storage;
 import com.tourapi.tourapi.common.exception.ApiResponse;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.general.status.SuccessStatus;
-import com.tourapi.tourapi.petAvatar.dto.PresignUploadRequest;
 import com.tourapi.tourapi.petAvatar.dto.PresignUploadResponse;
-import com.tourapi.tourapi.petAvatar.dto.AttachImageRequest;
-import com.tourapi.tourapi.petAvatar.dto.PetAvatarImageResponse;
 import com.tourapi.tourapi.petAvatar.dto.CreateAvatarFromStorageRequest;
 import com.tourapi.tourapi.petAvatar.dto.CreateAvatarFromStorageResponse;
-import com.tourapi.tourapi.petAvatar.enums.PetAvatarStyle;
 import com.tourapi.tourapi.petAvatar.service.S3PresignService;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,52 +32,6 @@ public class StorageController {
     private final PetAvatarService petAvatarService;
 
     /**
-     * 사전서명 업로드 URL 생성
-     */
-    @PostMapping("/presign-upload")
-    @Operation(
-        summary = "사전서명 업로드 URL 생성", 
-        description = "클라이언트가 직접 S3에 파일을 업로드할 수 있는 사전서명 URL을 생성합니다."
-    )
-    public ResponseEntity<ApiResponse<PresignUploadResponse>> generatePresignUploadUrl(
-            @RequestBody PresignUploadRequest request) {
-
-        try {
-            // S3PresignService 요청 객체로 변환
-            S3PresignService.PresignUploadRequest presignRequest = 
-                S3PresignService.PresignUploadRequest.builder()
-                    .fileExtension(request.getExt())
-                    .mimeType(request.getMime())
-                    .maxFileSize(request.getMaxFileSize())
-                    .prefix(request.getPrefix())
-                    .build();
-
-            // 사전서명 URL 생성
-            S3PresignService.PresignUploadResponse presignResponse = 
-                s3PresignService.generatePresignUploadUrl(presignRequest);
-
-            // 응답 DTO로 변환
-            PresignUploadResponse response = PresignUploadResponse.builder()
-                .uploadUrl(presignResponse.getUploadUrl())
-                .objectKey(presignResponse.getObjectKey())
-                .expiresIn(presignResponse.getExpiresIn())
-                .cdnUrl(presignResponse.getCdnUrl())
-                .build();
-
-            log.info("Generated presigned upload URL: {}", presignResponse.getObjectKey());
-
-            return ApiResponse.onSuccess(SuccessStatus.OK, response);
-
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid presign upload request: {}", e.getMessage());
-            return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, null);
-        } catch (Exception e) {
-            log.error("Failed to generate presigned upload URL", e);
-            return ApiResponse.onFailure(ErrorStatus.INTERNAL_SERVER_ERROR, null);
-        }
-    }
-
-    /**
      * PetAvatar 전용 사전서명 업로드 URL 생성
      * avatarId 하위 경로로 업로드하도록 prefix를 강제합니다.
      */
@@ -92,19 +42,16 @@ public class StorageController {
     )
     public ResponseEntity<ApiResponse<PresignUploadResponse>> presignPetAvatarUpload(
             @Parameter(name = "avatarId", in = ParameterIn.PATH, required = true, description = "대상 PetAvatar ID")
-            @PathVariable("avatarId") Long avatarId,
-            @RequestBody PresignUploadRequest request) {
+            @PathVariable("avatarId") Long avatarId) {
 
         try {
-            String enforcedPrefix = (request.getPrefix() != null && !request.getPrefix().isBlank())
-                    ? request.getPrefix()
-                    : "result"; // S3PresignServiceImpl은 input|result|thumb 만 허용
+            String enforcedPrefix = "result"; // S3PresignServiceImpl은 input|result|thumb 만 허용
 
             S3PresignService.PresignUploadRequest presignRequest =
                 S3PresignService.PresignUploadRequest.builder()
-                    .fileExtension(request.getExt())
-                    .mimeType(request.getMime())
-                    .maxFileSize(request.getMaxFileSize())
+                    .fileExtension(".png")
+                    .mimeType("image/png")
+                    .maxFileSize(null)
                     .prefix(enforcedPrefix)
                     .build();
 
@@ -131,37 +78,6 @@ public class StorageController {
     }
 
     /**
-     * 업로드 완료 확정: 업로드된 S3 객체 키를 PetAvatar 엔티티에 저장
-     */
-    @PostMapping("/pet-avatars/{avatarId}/confirm")
-    @Operation(
-        summary = "PetAvatar 업로드 확정",
-        description = "클라이언트가 S3 업로드를 완료한 후, 해당 객체 키와 CDN URL을 PetAvatar에 저장합니다."
-    )
-    public ResponseEntity<ApiResponse<PetAvatarImageResponse>> confirmPetAvatarUpload(
-            @Parameter(name = "avatarId", in = ParameterIn.PATH, required = true, description = "대상 PetAvatar ID")
-            @PathVariable("avatarId") Long avatarId,
-            @RequestBody AttachImageRequest request) {
-        try {
-            var updated = petAvatarService.attachImageFromStorage(avatarId, request.getS3Key(), request.getCdnUrl(), request.getMime());
-
-            PetAvatarImageResponse response = PetAvatarImageResponse.builder()
-                .storageKey(updated.getResultKey())
-                .imageUrl(updated.getCdnUrl())
-                .imageVersion(updated.getVersion())
-                .build();
-
-            return ApiResponse.onSuccess(SuccessStatus.OK, response);
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid confirm request for avatar {}: {}", avatarId, e.getMessage());
-            return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, null);
-        } catch (Exception e) {
-            log.error("Failed to confirm upload for avatar {}", avatarId, e);
-            return ApiResponse.onFailure(ErrorStatus.INTERNAL_SERVER_ERROR, null);
-        }
-    }
-
-    /**
      * S3에 업로드된 이미지로 새 PetAvatar 생성
      */
     @PostMapping("/pet-avatars")
@@ -182,9 +98,8 @@ public class StorageController {
                 request.getS3Key(),
                 request.getCdnUrl(),
                 request.getMime(),
-                PetAvatarStyle.PIXEL,
-                request.getMemberId(),
-                request.getSetPrimary()
+                com.tourapi.tourapi.petAvatar.enums.PetAvatarStyle.PIXEL,
+                request.getMemberId()
             );
 
             CreateAvatarFromStorageResponse response = CreateAvatarFromStorageResponse.builder()
@@ -204,5 +119,6 @@ public class StorageController {
             return ApiResponse.onFailure(ErrorStatus.INTERNAL_SERVER_ERROR, null);
         }
     }
+
 
 }
