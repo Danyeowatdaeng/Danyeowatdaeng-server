@@ -1,6 +1,6 @@
 petavatar:
   enabled: true
-  provider: mock  # 임시로 mock 모드로 설정
+  provider: gemini  # 이미지 입력 기반 생성/편집 활성화
   providerBaseUrl: https://generativelanguage.googleapis.com/v1beta
   timeoutMs: 30000
   apiKey: ${GEMINI_API_KEY:your-actual-api-key-here}
