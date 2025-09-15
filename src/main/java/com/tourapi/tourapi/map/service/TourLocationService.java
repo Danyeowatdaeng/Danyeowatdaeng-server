@@ -3,25 +3,59 @@ package com.tourapi.tourapi.map.service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.tourapi.tourapi.map.adapter.TourLocationAdapter;
 import com.tourapi.tourapi.map.domain.TourLocation;
+import com.tourapi.tourapi.map.dto.CommunityFacilityDto;
 import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TourLocationService {
 
     private final TourLocationAdapter tourLocationAdapter;
+    private final CommunityFacilityCsvService communityFacilityCsvService;
 
 
-    public List<TourLocation> searchByKeyword(String keyword, Pageable pageable) {
-        return tourLocationAdapter.fetchTourLocationsByKeyword(keyword, pageable, true);
+    public List<CommunityFacilityDto> searchByKeyword(String keyword, Pageable pageable) {
+        long start = System.currentTimeMillis();
+        List<CommunityFacilityCsvService.Row> rows = communityFacilityCsvService.searchByKeyword(keyword, pageable);
+        List<CommunityFacilityDto> results = rows.stream()
+                .filter(Objects::nonNull)
+                .map(r -> CommunityFacilityDto.builder()
+                        .name(r.name())
+                        .category3(r.category3())
+                        .roadAddress(r.roadAddress())
+                        .jibunAddress(r.jibunAddress())
+                        .homepage(r.homepage())
+                        .closedDays(r.closedDays())
+                        .openingHours(r.openingHours())
+                        .latitude(r.latitude())
+                        .longitude(r.longitude())
+                        .phone(r.phone())
+                        .source("CSV")
+                        .build())
+                .collect(Collectors.toList());
+        
+        long ms = System.currentTimeMillis() - start;
+        log.info("TourLocationService 검색 완료: '{}' → DTO 변환 {}건, 총 {} ms 소요", 
+                keyword, results.size(), ms);
+        return results;
+    }
+
+    private String buildAddress(String road, String jibun) {
+        if (road != null && !road.isBlank() && jibun != null && !jibun.isBlank()) {
+            return road + " | " + jibun;
+        }
+        return road != null && !road.isBlank() ? road : jibun;
     }
 
 

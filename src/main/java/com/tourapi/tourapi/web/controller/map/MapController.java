@@ -16,6 +16,7 @@ import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapSuccessStatus;
 import com.tourapi.tourapi.map.domain.TourLocation;
+import com.tourapi.tourapi.map.dto.CommunityFacilityDto;
 import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 import com.tourapi.tourapi.map.dto.DetailAggregate;
 import com.tourapi.tourapi.map.service.DetailAggregationService;
@@ -24,10 +25,12 @@ import com.tourapi.tourapi.map.service.TourLocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/map")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Map", description = "위치/키워드 기반 관광지 검색 API")
 public class MapController {
 
@@ -42,12 +45,16 @@ public class MapController {
     )
     @ApiErrorCodeExample(value = MapErrorStatus.class, codes = {"EXTERNAL_API_FAILURE", "INVALID_PARAMETER"})
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"INTERNAL_SERVER_ERROR"})
-    public ResponseEntity<ApiResponse<List<TourLocation>>> searchByKeyword(
+    public ResponseEntity<ApiResponse<List<CommunityFacilityDto>>> searchByKeyword(
             @RequestParam(name = "keyword") String keyword,
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(name = "json", defaultValue = "true") boolean json
     ) {
-        List<TourLocation> results = tourLocationService.searchByKeyword(keyword, pageable);
+        long start = System.currentTimeMillis();
+        List<CommunityFacilityDto> results = tourLocationService.searchByKeyword(keyword, pageable);
+        long ms = System.currentTimeMillis() - start;
+        log.info("MapController 검색 API 완료: '{}' → 최종 응답 {}건, 총 {} ms 소요", 
+                keyword, results.size(), ms);
         return ApiResponse.onSuccess(MapSuccessStatus.KEYWORD_SEARCH_SUCCESS, results);
     }
 
