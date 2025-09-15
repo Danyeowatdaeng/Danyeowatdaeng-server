@@ -21,11 +21,11 @@ public class PetAvatarResponse {
     private String imageMime;
     private Integer width;
     private Integer height;
-    private Boolean primary;
+    // 대표 여부는 Member.petAvatar로 관리 (필드 제거)
     private Integer version;
     private Boolean isActive;
     private Boolean isCustom;
-    private String originalImageUrl;
+
     private PetAvatarStyle style;
     @JsonIgnore
     private Long memberId;
@@ -42,11 +42,11 @@ public class PetAvatarResponse {
                 .imageMime(petAvatar.getImageMime())
                 .width(petAvatar.getWidth())
                 .height(petAvatar.getHeight())
-                .primary(petAvatar.getPrimary())
+                // primary 제거
                 .version(petAvatar.getVersion())
                 .isActive(petAvatar.getIsActive())
                 .isCustom(petAvatar.getIsCustom())
-                .originalImageUrl(petAvatar.getOriginalImageUrl())
+
                 .style(petAvatar.getStyle())
                 .memberId(petAvatar.getMemberId())
                 .createdAt(petAvatar.getCreatedAt())

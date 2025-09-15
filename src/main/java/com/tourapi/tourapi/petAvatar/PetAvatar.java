@@ -47,9 +47,6 @@ public class PetAvatar extends BaseEntity {
     @Column(name = "height")
     private Integer height; // 이미지 높이
 
-    @Column(name = "is_primary", nullable = false)
-    private Boolean primary = false; // 대표 아바타 여부
-
     @Column(name = "version", nullable = false)
     private Integer version = 1; // 버전 관리
 
@@ -59,8 +56,6 @@ public class PetAvatar extends BaseEntity {
     @Column(name = "is_custom", nullable = false)
     private Boolean isCustom = false; // AI 확장용
 
-    @Column(name = "original_image_url", columnDefinition = "TEXT")
-    private String originalImageUrl; // AI 확장용 (원본 이미지)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "style", length = 20)
@@ -72,8 +67,8 @@ public class PetAvatar extends BaseEntity {
     @Builder
     public PetAvatar(PetType pet, String code, String displayName, 
                     String resultKey, String thumbKey, String cdnUrl, String imageMime,
-                    Integer width, Integer height, Boolean primary, Integer version,
-                    Boolean isActive, Boolean isCustom, String originalImageUrl, 
+                    Integer width, Integer height, Integer version,
+                    Boolean isActive, Boolean isCustom, 
                     PetAvatarStyle style, Long memberId) {
         this.pet = pet;
         this.code = code;
@@ -84,11 +79,9 @@ public class PetAvatar extends BaseEntity {
         this.imageMime = imageMime != null ? imageMime : "image/png";
         this.width = width;
         this.height = height;
-        this.primary = primary != null ? primary : false;
         this.version = version != null ? version : 1;
         this.isActive = isActive != null ? isActive : true;
         this.isCustom = isCustom != null ? isCustom : false;
-        this.originalImageUrl = originalImageUrl;
         this.style = style;
         this.memberId = memberId;
     }
@@ -128,7 +121,7 @@ public class PetAvatar extends BaseEntity {
 
     // 커스텀 PetAvatar 생성용 정적 팩토리 메서드 (기존 호환성)
     public static PetAvatar createCustom(PetType pet, String code, String displayName, 
-                                       String cdnUrl, String originalImageUrl, 
+                                       String cdnUrl, 
                                        PetAvatarStyle style, Long memberId) {
         return PetAvatar.builder()
                 .pet(pet)
@@ -137,7 +130,6 @@ public class PetAvatar extends BaseEntity {
                 .cdnUrl(cdnUrl)
                 .isActive(true)
                 .isCustom(true)
-                .originalImageUrl(originalImageUrl)
                 .style(style)
                 .memberId(memberId)
                 .build();
@@ -147,8 +139,8 @@ public class PetAvatar extends BaseEntity {
     public static PetAvatar createCustomWithS3(PetType pet, String code, String displayName,
                                              String resultKey, String thumbKey, String cdnUrl,
                                              String imageMime, Integer width, Integer height,
-                                             String originalImageUrl, PetAvatarStyle style, 
-                                             Long memberId, Boolean primary) {
+                                             PetAvatarStyle style, 
+                                             Long memberId) {
         return PetAvatar.builder()
                 .pet(pet)
                 .code(code)
@@ -159,10 +151,8 @@ public class PetAvatar extends BaseEntity {
                 .imageMime(imageMime)
                 .width(width)
                 .height(height)
-                .primary(primary != null ? primary : false)
                 .isActive(true)
                 .isCustom(true)
-                .originalImageUrl(originalImageUrl)
                 .style(style)
                 .memberId(memberId)
                 .build();
@@ -178,15 +168,6 @@ public class PetAvatar extends BaseEntity {
         this.isActive = true;
     }
 
-    // 대표 아바타로 설정
-    public void setAsPrimary() {
-        this.primary = true;
-    }
-
-    // 대표 아바타 해제
-    public void unsetAsPrimary() {
-        this.primary = false;
-    }
 
     // 버전 업데이트
     public void updateVersion() {
