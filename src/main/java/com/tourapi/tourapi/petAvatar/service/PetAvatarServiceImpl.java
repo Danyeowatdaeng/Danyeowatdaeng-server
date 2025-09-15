@@ -185,6 +185,8 @@ public class PetAvatarServiceImpl implements PetAvatarService {
         String mime = guessMimeType(filename == null ? null : filename);
         log.info("=== Gemini API 요청 정보 ===");
         log.info("엔드포인트: {}", endpoint.replaceAll("key=[^&]+", "key=***"));
+        log.info("API 키 길이: {} characters", properties.getApiKey() != null ? properties.getApiKey().length() : 0);
+        log.info("API 키 시작: {}", properties.getApiKey() != null ? properties.getApiKey().substring(0, Math.min(10, properties.getApiKey().length())) + "..." : "null");
         log.info("MIME 타입: {}", mime);
         log.info("Base64 인코딩 크기: {} characters", b64.length());
         log.info("프롬프트: {}", prompt);
@@ -427,5 +429,53 @@ public class PetAvatarServiceImpl implements PetAvatarService {
     public PetAvatar getPrimaryAvatarByMemberId(Long memberId) {
         // TODO: 사용자의 대표 아바타 조회
         throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    @Transactional
+    public PetAvatar attachImageFromStorage(Long avatarId, String s3Key, String cdnUrl, String mime) {
+        if (avatarId == null || s3Key == null || s3Key.isBlank()) {
+            throw new IllegalArgumentException("avatarId and s3Key are required");
+        }
+        PetAvatar avatar = getPetAvatarById(avatarId);
+
+        // 간단한 검증: 키/URL 존재
+        String resolvedMime = (mime == null || mime.isBlank()) ? "image/png" : mime;
+
+        // resultKey와 cdnUrl 저장, 버전 증가
+        avatar.updateS3Info(s3Key, avatar.getThumbKey(), cdnUrl, resolvedMime, avatar.getWidth(), avatar.getHeight());
+        avatar.updateVersion();
+
+        return petAvatarRepository.save(avatar);
+    }
+
+    @Override
+    @Transactional
+    public PetAvatar createCustomPetAvatarFromStorage(PetType petType, String displayName,
+                                                     String s3Key, String cdnUrl, String mime,
+                                                     PetAvatarStyle style, Long memberId,
+                                                     Boolean setPrimary) {
+        if (petType == null || displayName == null || displayName.isBlank() || s3Key == null || s3Key.isBlank()) {
+            throw new IllegalArgumentException("petType, displayName, s3Key are required");
+        }
+
+        String code = "CUSTOM_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        PetAvatar avatar = PetAvatar.createCustomWithS3(
+                petType,
+                code,
+                displayName,
+                s3Key,
+                null,
+                cdnUrl,
+                (mime == null || mime.isBlank()) ? "image/png" : mime,
+                null,
+                null,
+                null,
+                style != null ? style : PetAvatarStyle.DEFAULT,
+                memberId,
+                setPrimary != null ? setPrimary : Boolean.FALSE
+        );
+
+        return petAvatarRepository.save(avatar);
     }
 }

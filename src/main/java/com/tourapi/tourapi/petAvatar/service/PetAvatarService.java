@@ -65,4 +65,13 @@ public interface PetAvatarService {
     
     // 사용자의 대표 아바타 조회
     PetAvatar getPrimaryAvatarByMemberId(Long memberId);
+
+    // 업로드 확정: S3 키와 CDN URL을 저장하고 버전을 갱신
+    PetAvatar attachImageFromStorage(Long avatarId, String s3Key, String cdnUrl, String mime);
+
+    // 업로드된 S3 키로 새 커스텀 PetAvatar 생성
+    PetAvatar createCustomPetAvatarFromStorage(PetType petType, String displayName,
+                                              String s3Key, String cdnUrl, String mime,
+                                              PetAvatarStyle style, Long memberId,
+                                              Boolean setPrimary);
 }
