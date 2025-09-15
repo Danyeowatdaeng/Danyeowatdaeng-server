@@ -38,7 +38,6 @@ public class PetAvatarDataInitializer implements CommandLineRunner {
                 512,
                 512
         );
-        dogAvatar.setAsPrimary();
         petAvatarRepository.save(dogAvatar);
 
         // 고양이 기본 아바타
@@ -150,7 +149,7 @@ public class PetAvatarDataInitializer implements CommandLineRunner {
                 .imageMime("image/png")
                 .width(512)
                 .height(512)
-                .primary(false)
+                // primary 필드 제거됨
                 .version(1)
                 .isActive(true)
                 .isCustom(false)
@@ -169,7 +168,7 @@ public class PetAvatarDataInitializer implements CommandLineRunner {
                 .imageMime("image/png")
                 .width(512)
                 .height(512)
-                .primary(false)
+                // primary 필드 제거됨
                 .version(1)
                 .isActive(true)
                 .isCustom(false)

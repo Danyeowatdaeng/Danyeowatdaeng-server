@@ -8,7 +8,8 @@ public enum PetType {
     RABBIT("토끼"),
     HAMSTER("햄스터"),
     TURTLE("거북이"),
-    FERRET("페럿");
+    FERRET("페럿"),
+    CUSTOM("커스텀");
 
     private final String displayName;
 
