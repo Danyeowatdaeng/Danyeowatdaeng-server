@@ -157,6 +157,15 @@ public class SwaggerConfig {
                 .build();
     }
 
+    // walk api swagger
+    @Bean
+    public GroupedOpenApi walkGroup() {
+        return GroupedOpenApi.builder()
+                .group("Walk")
+                .pathsToMatch("/api/walk/**")
+                .build();
+    }
+
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {
         if (enumClass == null || codes == null) return;
         try {
