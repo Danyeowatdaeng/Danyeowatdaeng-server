@@ -166,6 +166,15 @@ public class SwaggerConfig {
                 .build();
     }
 
+    // point api swagger
+    @Bean
+    public GroupedOpenApi pointGroup() {
+        return GroupedOpenApi.builder()
+                .group("Point")
+                .pathsToMatch("/api/points/**")
+                .build();
+    }
+
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {
         if (enumClass == null || codes == null) return;
         try {
