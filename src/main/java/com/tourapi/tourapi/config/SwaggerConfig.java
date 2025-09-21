@@ -175,6 +175,15 @@ public class SwaggerConfig {
                 .build();
     }
 
+    // chatbot api swagger
+    @Bean
+    public GroupedOpenApi chatbotGroup() {
+        return GroupedOpenApi.builder()
+                .group("Chatbot")
+                .pathsToMatch("/api/chatbot/**")
+                .build();
+    }
+
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {
         if (enumClass == null || codes == null) return;
         try {

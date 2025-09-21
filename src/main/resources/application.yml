@@ -61,3 +61,8 @@ aws:
     region: ${AWS_S3_REGION:ap-northeast-2}
     cloudfrontDomain: ${AWS_CLOUDFRONT_DOMAIN:}
     presignExpireSeconds: ${AWS_PRESIGN_EXPIRE_SECONDS:600}
+
+gemini:
+  api:
+    base-url: https://generativelanguage.googleapis.com/v1beta
+    key: ${GEMINI_API_KEY:}
