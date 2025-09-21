@@ -25,6 +25,7 @@ public class PetDiaryServiceImpl implements PetDiaryService {
 
     private final PetDiaryRepository petDiaryRepository;
     private final MemberRepository memberRepository;
+    private final com.tourapi.tourapi.point.service.PointService pointService;
 
     @Override
     public PetDiary createDiary(Long memberId, PetDiaryCreateRequest request) {
@@ -40,6 +41,24 @@ public class PetDiaryServiceImpl implements PetDiaryService {
                 .build();
 
         PetDiary savedDiary = petDiaryRepository.save(diary);
+
+        // 하루 한 번 다이어리 포인트 적립 (30포인트)
+        try {
+            com.tourapi.tourapi.point.domain.Point earnedPoint = pointService.earnPointsIfNotEarnedToday(
+                    memberId,
+                    com.tourapi.tourapi.point.enums.PointType.DIARY_DAILY,
+                    "일일 다이어리 작성",
+                    savedDiary.getId()
+            );
+            if (earnedPoint != null) {
+                log.info("Diary daily points earned: memberId={}, diaryId={}, points={}",
+                        memberId, savedDiary.getId(), earnedPoint.getAmount());
+            }
+        } catch (Exception e) {
+            log.error("Failed to earn diary points for member {}: {}", memberId, e.getMessage());
+            // 포인트 적립 실패해도 다이어리 작성은 성공으로 처리
+        }
+
         log.info("Pet diary created: diaryId={}, memberId={}, title={}",
                 savedDiary.getId(), memberId, request.getTitle());
 

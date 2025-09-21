@@ -157,6 +157,33 @@ public class SwaggerConfig {
                 .build();
     }
 
+    // walk api swagger
+    @Bean
+    public GroupedOpenApi walkGroup() {
+        return GroupedOpenApi.builder()
+                .group("Walk")
+                .pathsToMatch("/api/walk/**")
+                .build();
+    }
+
+    // point api swagger
+    @Bean
+    public GroupedOpenApi pointGroup() {
+        return GroupedOpenApi.builder()
+                .group("Point")
+                .pathsToMatch("/api/points/**")
+                .build();
+    }
+
+    // chatbot api swagger
+    @Bean
+    public GroupedOpenApi chatbotGroup() {
+        return GroupedOpenApi.builder()
+                .group("Chatbot")
+                .pathsToMatch("/api/chatbot/**")
+                .build();
+    }
+
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {
         if (enumClass == null || codes == null) return;
         try {
