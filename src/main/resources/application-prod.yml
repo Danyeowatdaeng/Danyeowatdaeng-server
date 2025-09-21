@@ -60,6 +60,12 @@ logging:
 jwt:
   secret: ${JWT_SECRET:your-super-secret-key-that-should-be-long-and-secure-for-production}
   expirationMs: 3600000 # 1시간 (밀리초) - 프로덕션에서는 더 짧게
+  refreshTokenExpirationMs: 2592000000 # 30일 (밀리초)
+  tokenPrefix: "Bearer "
+  issuer: "tourapi"
+  audiences:
+    - "web"
+    - "mobile"
 
 token:
   hmac-secret: ${REFRESH_HMAC_SECRET:prod-change-me-please}
