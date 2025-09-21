@@ -1,3 +1,4 @@
+// src/main/java/com/tourapi/tourapi/walk/service/WalkServiceImpl.java
 package com.tourapi.tourapi.walk.service;
 
 import com.tourapi.tourapi.common.exception.member.MemberHandler;
@@ -9,6 +10,8 @@ import com.tourapi.tourapi.member.repository.MemberRepository;
 import com.tourapi.tourapi.walk.domain.Walk;
 import com.tourapi.tourapi.walk.dto.WalkCreateRequest;
 import com.tourapi.tourapi.walk.repository.WalkRepository;
+import com.tourapi.tourapi.quest.service.QuestService; // 추가
+import com.tourapi.tourapi.quest.enums.QuestType; // 추가
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +28,7 @@ public class WalkServiceImpl implements WalkService {
     private final WalkRepository walkRepository;
     private final MemberRepository memberRepository;
     private final com.tourapi.tourapi.point.service.PointService pointService;
+    private final QuestService questService; // 추가
 
     @Override
     public Walk createWalk(Long memberId, WalkCreateRequest request) {
@@ -38,6 +42,14 @@ public class WalkServiceImpl implements WalkService {
                 .build();
 
         Walk savedWalk = walkRepository.save(walk);
+
+        // 퀘스트 진행도 업데이트 추가
+        try {
+            questService.updateQuestProgress(memberId, QuestType.WALK_DAILY, 1);
+            log.info("Quest progress updated for walk: memberId={}, walkId={}", memberId, savedWalk.getId());
+        } catch (Exception e) {
+            log.error("Failed to update quest progress for member {}: {}", memberId, e.getMessage());
+        }
 
         // 하루 한 번 산책 포인트 적립 (20포인트)
         try {
