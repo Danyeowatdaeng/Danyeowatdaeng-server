@@ -184,6 +184,15 @@ public class SwaggerConfig {
                 .build();
     }
 
+    // quest api swagger
+    @Bean
+    public GroupedOpenApi questGroup() {
+        return GroupedOpenApi.builder()
+                .group("Quest")
+                .pathsToMatch("/api/quests/**")
+                .build();
+    }
+
     private void generateErrorExamples(ApiResponses responses, Class<? extends Enum<?>> enumClass, String[] codes) {
         if (enumClass == null || codes == null) return;
         try {

@@ -1,3 +1,4 @@
+// src/main/java/com/tourapi/tourapi/mypet/service/PetDiaryServiceImpl.java
 package com.tourapi.tourapi.mypet.service;
 
 import com.tourapi.tourapi.common.exception.member.MemberHandler;
@@ -10,6 +11,8 @@ import com.tourapi.tourapi.mypet.domain.PetDiary;
 import com.tourapi.tourapi.mypet.dto.PetDiaryCreateRequest;
 import com.tourapi.tourapi.mypet.dto.PetDiaryUpdateRequest;
 import com.tourapi.tourapi.mypet.repository.PetDiaryRepository;
+import com.tourapi.tourapi.quest.service.QuestService; // 추가
+import com.tourapi.tourapi.quest.enums.QuestType; // 추가
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +29,7 @@ public class PetDiaryServiceImpl implements PetDiaryService {
     private final PetDiaryRepository petDiaryRepository;
     private final MemberRepository memberRepository;
     private final com.tourapi.tourapi.point.service.PointService pointService;
+    private final QuestService questService; // 추가
 
     @Override
     public PetDiary createDiary(Long memberId, PetDiaryCreateRequest request) {
@@ -41,6 +45,14 @@ public class PetDiaryServiceImpl implements PetDiaryService {
                 .build();
 
         PetDiary savedDiary = petDiaryRepository.save(diary);
+
+        // 퀘스트 진행도 업데이트 추가
+        try {
+            questService.updateQuestProgress(memberId, QuestType.DIARY_DAILY, 1);
+            log.info("Quest progress updated for diary: memberId={}, diaryId={}", memberId, savedDiary.getId());
+        } catch (Exception e) {
+            log.error("Failed to update quest progress for member {}: {}", memberId, e.getMessage());
+        }
 
         // 하루 한 번 다이어리 포인트 적립 (30포인트)
         try {
