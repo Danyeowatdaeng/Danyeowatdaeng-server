@@ -112,7 +112,7 @@ public class PetAvatarController {
     }
 
     // === MVP Upload (moved from PetAvatarMvpController) ===
-    @PostMapping(value = "/transform-mypet", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/upload/transform", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "펫 이미지를 픽셀아트로 변환", 
                description = "업로드된 펫 이미지를 Gemini AI를 사용하여 픽셀아트 스타일로 변환합니다. " +
                            "지원 형식: PNG, JPEG, WebP. 최대 크기: 10MB. " +
