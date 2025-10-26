@@ -71,6 +71,13 @@ public class PetAvatarServiceImpl implements PetAvatarService {
     }
 
     @Override
+    public String getPetAvatarCdnUrlById(Long id) {
+        PetAvatar petAvatar = petAvatarRepository.findById(id)
+                .orElseThrow(() -> new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_NOT_FOUND));
+        return petAvatar.getCdnUrl();
+    }
+
+    @Override
     public PetAvatar getPetAvatarByCode(String code) {
         return petAvatarRepository.findByCodeAndIsActiveTrue(code)
                 .orElseThrow(() -> new PetAvatarHandler(PetAvatarErrorStatus.PET_AVATAR_NOT_FOUND));

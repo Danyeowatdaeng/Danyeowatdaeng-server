@@ -26,6 +26,9 @@ public interface PetAvatarService {
     // ID로 PetAvatar 조회
     PetAvatar getPetAvatarById(Long id);
     
+    // ID로 PetAvatar의 CDN URL만 조회
+    String getPetAvatarCdnUrlById(Long id);
+    
     // 코드로 PetAvatar 조회
     PetAvatar getPetAvatarByCode(String code);
     
