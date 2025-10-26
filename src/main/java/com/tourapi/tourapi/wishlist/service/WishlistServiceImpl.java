@@ -40,7 +40,7 @@ public class WishlistServiceImpl implements WishlistService {
             throw new WishlistHandler(WishlistErrorStatus.INVALID_CONTENT_ID);
         }
 
-        // 이미 찜한 관광지인지 확인
+        // 이미 찜한 관광지인지 확인 (deleted=false인 경우만)
         Optional<Wishlist> existingWishlist = wishlistRepository
                 .findByMemberIdAndContentIdAndDeletedFalse(memberId, contentId);
 
@@ -48,6 +48,28 @@ public class WishlistServiceImpl implements WishlistService {
             throw new WishlistHandler(WishlistErrorStatus.ALREADY_ADDED_TO_WISHLIST);
         }
 
+        // 삭제된 항목이 있는지 확인 (전체 조회)
+        Optional<Wishlist> deletedWishlist = wishlistRepository
+                .findByMemberIdAndContentId(memberId, contentId);
+
+        if (deletedWishlist.isPresent()) {
+            // 삭제된 항목이 있으면 복원
+            Wishlist wishlist = deletedWishlist.get();
+            wishlist.setDeleted(false);
+            wishlist.setContentTypeId(request.getContentTypeId());
+            wishlist.setTitle(request.getTitle());
+            wishlist.setAddress(request.getAddress());
+            wishlist.setImageUrl(request.getImageUrl());
+            wishlist.setLatitude(request.getLatitude());
+            wishlist.setLongitude(request.getLongitude());
+            
+            Wishlist savedWishlist = wishlistRepository.save(wishlist);
+            log.info("Wishlist restored: memberId={}, contentId={}, title={}, source={}",
+                    memberId, contentId, request.getTitle(), request.getSource());
+            return savedWishlist;
+        }
+
+        // 새로운 항목 추가
         Wishlist wishlist = Wishlist.builder()
                 .member(member)
                 .contentId(contentId)
