@@ -27,13 +27,13 @@ public class GeminiApiServiceImpl implements GeminiApiService {
     private String apiKey;
 
     private static final Set<String> SUPPORTED_MODELS = Set.of(
-            "gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.5-flash-8b"
+            "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"
     );
 
     @Override
     public String generateResponse(String message, List<ChatMessage> conversationHistory, String model) {
         if (!isValidModel(model)) {
-            model = "gemini-1.5-flash"; // 기본 모델
+            model = "gemini-2.5-flash"; // 기본 모델
         }
 
         try {
