@@ -90,7 +90,27 @@ public class MemberController {
         Long memberId = principal.getId();
 
         Member member = memberService.getMemberById(memberId);
-        MemberResponse response = MemberResponse.from(member);
+        
+        // PetAvatar CDN URL 조회
+        String petAvatarCdnUrl = null;
+        if (member.getPetAvatar() != null) {
+            try {
+                petAvatarCdnUrl = petAvatarService.getPetAvatarCdnUrlById(member.getPetAvatar().getId());
+            } catch (Exception e) {
+                log.warn("Failed to get PetAvatar CDN URL for member {}: {}", memberId, e.getMessage());
+                // CDN URL 조회 실패 시 null로 설정 (기존 동작 유지)
+            }
+        }
+        
+        MemberResponse response = MemberResponse.builder()
+                .id(member.getId())
+                .nickname(member.getNickname())
+                .email(member.getEmail())
+                .profileImageUrl(member.getProfileImageUrl())
+                .signUpCompleted(member.isSignUpCompleted())
+                .petAvatarId(member.getPetAvatar() != null ? member.getPetAvatar().getId() : null)
+                .petAvatarCdnUrl(petAvatarCdnUrl)
+                .build();
 
         log.info("Member info retrieved for member {}", memberId);
         return ApiResponse.onSuccess(MemberSuccessStatus.MEMBER_INFO_FETCHED, response);

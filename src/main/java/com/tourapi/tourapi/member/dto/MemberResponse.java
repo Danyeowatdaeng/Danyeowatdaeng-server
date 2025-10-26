@@ -13,6 +13,7 @@ public class MemberResponse {
     private String profileImageUrl;
     private boolean signUpCompleted;
     private Long petAvatarId;
+    private String petAvatarCdnUrl;
 
     public static MemberResponse from(Member member) {
         return MemberResponse.builder()
