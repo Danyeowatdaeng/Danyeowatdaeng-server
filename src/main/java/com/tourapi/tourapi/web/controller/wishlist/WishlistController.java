@@ -10,6 +10,7 @@ import com.tourapi.tourapi.common.exception.wishlist.status.WishlistSuccessStatu
 import com.tourapi.tourapi.wishlist.domain.Wishlist;
 import com.tourapi.tourapi.wishlist.dto.WishlistAddRequest;
 import com.tourapi.tourapi.wishlist.dto.WishlistResponse;
+import com.tourapi.tourapi.wishlist.dto.SearchWishlistAddRequest;
 import com.tourapi.tourapi.wishlist.service.WishlistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -186,5 +187,65 @@ public class WishlistController {
 
         log.info("Wishlist content IDs retrieved: memberId={}, count={}", memberId, contentIds.size());
         return ApiResponse.onSuccess(WishlistSuccessStatus.WISHLIST_LIST_FOUND, response);
+    }
+
+    @PostMapping("/search")
+    @Operation(
+            summary = "검색 결과 찜하기 추가",
+            description = "검색 API 결과를 찜하기에 추가합니다. (CSV 데이터용)"
+    )
+    @SecurityRequirement(name = "accessToken")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
+    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
+    @ApiErrorCodeExample(value = WishlistErrorStatus.class, codes = {"WISHLIST4002"})
+    public ResponseEntity<ApiResponse<WishlistResponse>> addSearchResultToWishlist(
+            @Valid @RequestBody SearchWishlistAddRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+
+        Long memberId = principal.getId();
+        Wishlist wishlist = wishlistService.addSearchResultToWishlist(memberId, request);
+        WishlistResponse response = WishlistResponse.from(wishlist);
+
+        log.info("Search result added to wishlist: memberId={}, name={}, generatedContentId={}",
+                memberId, request.getName(), request.generateContentId());
+        return ApiResponse.onSuccess(WishlistSuccessStatus.WISHLIST_ADDED, response);
+    }
+
+    @PostMapping("/search/toggle")
+    @Operation(
+            summary = "검색 결과 찜하기 토글",
+            description = "검색 API 결과의 찜하기 상태를 토글합니다. (CSV 데이터용)"
+    )
+    @SecurityRequirement(name = "accessToken")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"})
+    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"})
+    public ResponseEntity<ApiResponse<Map<String, Object>>> toggleSearchResultWishlist(
+            @Valid @RequestBody SearchWishlistAddRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+
+        Long memberId = principal.getId();
+        boolean isAdded = wishlistService.toggleSearchResultWishlist(memberId, request);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("isWishlisted", isAdded);
+        response.put("name", request.getName());
+        response.put("generatedContentId", request.generateContentId());
+        response.put("action", isAdded ? "added" : "removed");
+
+        log.info("Search result wishlist toggled: memberId={}, name={}, action={}",
+                memberId, request.getName(), isAdded ? "added" : "removed");
+
+        return ApiResponse.onSuccess(
+                isAdded ? WishlistSuccessStatus.WISHLIST_ADDED : WishlistSuccessStatus.WISHLIST_REMOVED,
+                response
+        );
     }
 }
