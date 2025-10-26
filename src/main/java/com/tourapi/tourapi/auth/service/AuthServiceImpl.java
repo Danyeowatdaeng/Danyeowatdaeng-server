@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.tourapi.tourapi.auth.dto.TokenResponse;
+import com.tourapi.tourapi.auth.dto.TestLoginResponse;
 import com.tourapi.tourapi.auth.enums.OauthProvider;
 import com.tourapi.tourapi.auth.jwt.JwtProvider;
 import com.tourapi.tourapi.auth.oauth.SocialTokenVerifier;
@@ -104,6 +105,67 @@ public class AuthServiceImpl implements AuthService {
             return new TokenResponse(tokens.accessToken(), tokens.refreshToken(), tokens.sessionId(), tokens.familyId(), email, name, isSignUpCompleted);
         } catch (Exception e) {
             throw new RuntimeException("OAuth 콜백 로그인 실패: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public TestLoginResponse testLogin(String email, String name) {
+        logger.info("테스트 로그인 시작: email={}, name={}", email, name);
+        
+        try {
+            // 이메일로 회원 조회 또는 생성
+            Member member = memberRepository.findByEmail(email).orElse(null);
+            if (member == null) {
+                logger.info("테스트 로그인 - 회원이 없어서 생성: email={}, name={}", email, name);
+                member = new Member();
+                member.setProvider(OauthProvider.LOCAL);
+                member.setProviderUserId("test_" + email);
+                member.setEmail(email);
+                member.setNickname(name);
+                member.setProfileImageUrl(null);
+                member.setSignUpCompleted(false); // 테스트용으로 미가입 상태로 설정
+                member.setRole(Role.USER);
+                member = memberRepository.save(member);
+                logger.info("테스트 로그인 - 회원 생성 완료: memberId={}, email={}", member.getId(), email);
+            } else {
+                logger.info("테스트 로그인 - 기존 회원 조회: memberId={}, email={}, isSignUpCompleted={}", 
+                        member.getId(), email, member.isSignUpCompleted());
+            }
+
+            Long id = member.getId();
+            boolean isSignUpCompleted = member.isSignUpCompleted();
+
+            // 가입 미완료면 액세스 토큰만 발급, 완료면 리프레시 포함 발급
+            if (!isSignUpCompleted) {
+                logger.info("테스트 로그인 - 가입 미완료 상태: memberId={}, email={}, 액세스 토큰만 발급", id, email);
+                String accessToken = jwtProvider.createAccessToken(id, email, name, member.getRole(), false);
+                
+                return TestLoginResponse.builder()
+                        .accessToken(accessToken)
+                        .refreshToken(null)
+                        .sessionId(null)
+                        .familyId(null)
+                        .email(email)
+                        .name(name)
+                        .isSignUpCompleted(false)
+                        .build();
+            }
+
+            logger.info("테스트 로그인 - 가입 완료 상태: memberId={}, email={}, 액세스+리프레시 토큰 발급", id, email);
+            TokenPair tokens = issueTokensOnLogin(id, email, name, member.getRole(), true);
+            
+            return TestLoginResponse.builder()
+                    .accessToken(tokens.accessToken())
+                    .refreshToken(tokens.refreshToken())
+                    .sessionId(tokens.sessionId())
+                    .familyId(tokens.familyId())
+                    .email(email)
+                    .name(name)
+                    .isSignUpCompleted(true)
+                    .build();
+        } catch (Exception e) {
+            logger.error("테스트 로그인 실패: email={}, name={}", email, name, e);
+            throw new RuntimeException("테스트 로그인 실패: " + e.getMessage(), e);
         }
     }
      

@@ -1,6 +1,7 @@
 package com.tourapi.tourapi.auth.service;
 
 import com.tourapi.tourapi.auth.dto.TokenResponse;
+import com.tourapi.tourapi.auth.dto.TestLoginResponse;
 import com.tourapi.tourapi.member.enums.Role;
 
 public interface AuthService {
@@ -12,6 +13,8 @@ public interface AuthService {
     TokenResponse socialLogin(String provider, String token);
     
     TokenResponse oauthCallbackLogin(String provider, String providerUserId, String email, String name);
+    
+    TestLoginResponse testLogin(String email, String name);
     
     TokenResponse refreshToken(String oldRefreshToken);
 }
