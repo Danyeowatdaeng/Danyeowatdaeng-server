@@ -9,6 +9,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.tourapi.tourapi.common.exception.general.GeneralException;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
+import com.tourapi.tourapi.common.exception.coupon.CouponException;
 
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,17 @@ public class ExceptionAdvice {
     public ResponseEntity<ApiResponse<String>> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException exception) {
         log.error("ARG_:CTRL:MISMATCH:::MethodArgumentTypeMismatchException msg({})", exception.getMessage());
         return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    /**
+     * CouponException 처리
+     * @param exception CouponException
+     * @return ApiResponse - CouponException
+     */
+    @ExceptionHandler(CouponException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCouponException(CouponException exception) {
+        log.error("COUPON:CTRL:ERROR:::CouponException msg({})", exception.getStatus().getMessage());
+        return ApiResponse.onFailure(exception.getStatus());
     }
 
     /**
