@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tourapi.tourapi.auth.dto.RefreshRequest;
 import com.tourapi.tourapi.auth.dto.SocialLoginRequest;
+import com.tourapi.tourapi.auth.dto.TestLoginRequest;
+import com.tourapi.tourapi.auth.dto.TestLoginResponse;
 import com.tourapi.tourapi.auth.dto.TokenResponse;
 import com.tourapi.tourapi.auth.service.AuthService;
 
@@ -86,6 +88,31 @@ public class AuthController {
             return ApiResponse.onSuccess(TokenSuccessStatus.REFRESH_SUCCESS, response);
         } catch (Exception ex) {
             log.error("로컬 테스트 로그인 실패", ex);
+            return ApiResponse.onFailure(TokenErrorStatus.INVALID_REFRESH_TOKEN, null);
+        }
+    }
+
+    @PostMapping("/test/login")
+    @Operation(
+            summary = "테스트 로그인",
+            description = "이메일과 이름으로 테스트 로그인합니다. 가입되어 있는 경우는 액세스/리프레시 주고, 없으면 액세스만 줍니다. 판단은 isSignUpCompleted로",
+            tags = {"테스트"}
+    )
+    public ResponseEntity<ApiResponse<TestLoginResponse>> testLogin(@RequestBody TestLoginRequest request) {
+        try {
+            log.info("테스트 로그인 요청: email={}, name={}", request.getEmail(), request.getName());
+            
+            TestLoginResponse response = authService.testLogin(request.getEmail(), request.getName());
+            
+            // 리프레시 토큰이 없으면 약관 동의가 필요한 상태로 간주
+            if (response.getRefreshToken() == null) {
+                return ApiResponse.onSuccess(MemberSuccessStatus.TERMS_AGREEMENT_REQUIRED, response);
+            }
+            
+            // 리프레시 토큰이 있으면 정상 로그인
+            return ApiResponse.onSuccess(MemberSuccessStatus.SIGN_IN_SUCCESS, response);
+        } catch (Exception ex) {
+            log.error("테스트 로그인 실패", ex);
             return ApiResponse.onFailure(TokenErrorStatus.INVALID_REFRESH_TOKEN, null);
         }
     }
