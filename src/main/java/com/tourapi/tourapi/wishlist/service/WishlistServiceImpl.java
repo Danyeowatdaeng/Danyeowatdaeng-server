@@ -8,6 +8,7 @@ import com.tourapi.tourapi.member.Member;
 import com.tourapi.tourapi.member.repository.MemberRepository;
 import com.tourapi.tourapi.wishlist.domain.Wishlist;
 import com.tourapi.tourapi.wishlist.dto.WishlistAddRequest;
+import com.tourapi.tourapi.wishlist.dto.SearchWishlistAddRequest;
 import com.tourapi.tourapi.wishlist.repository.WishlistRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,5 +117,19 @@ public class WishlistServiceImpl implements WishlistService {
             addToWishlist(memberId, request);
             return true; // 추가됨
         }
+    }
+
+    @Override
+    public Wishlist addSearchResultToWishlist(Long memberId, SearchWishlistAddRequest request) {
+        // SearchWishlistAddRequest를 WishlistAddRequest로 변환
+        WishlistAddRequest wishlistRequest = request.toWishlistAddRequest();
+        return addToWishlist(memberId, wishlistRequest);
+    }
+
+    @Override
+    public boolean toggleSearchResultWishlist(Long memberId, SearchWishlistAddRequest request) {
+        // SearchWishlistAddRequest를 WishlistAddRequest로 변환
+        WishlistAddRequest wishlistRequest = request.toWishlistAddRequest();
+        return toggleWishlist(memberId, wishlistRequest);
     }
 }

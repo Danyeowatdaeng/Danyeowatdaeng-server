@@ -2,6 +2,7 @@ package com.tourapi.tourapi.wishlist.service;
 
 import com.tourapi.tourapi.wishlist.domain.Wishlist;
 import com.tourapi.tourapi.wishlist.dto.WishlistAddRequest;
+import com.tourapi.tourapi.wishlist.dto.SearchWishlistAddRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -43,4 +44,14 @@ public interface WishlistService {
      * 찜하기 토글 (있으면 삭제, 없으면 추가)
      */
     boolean toggleWishlist(Long memberId, WishlistAddRequest request);
+
+    /**
+     * 검색 결과용 찜하기 추가 (CSV 데이터)
+     */
+    Wishlist addSearchResultToWishlist(Long memberId, SearchWishlistAddRequest request);
+
+    /**
+     * 검색 결과용 찜하기 토글 (CSV 데이터)
+     */
+    boolean toggleSearchResultWishlist(Long memberId, SearchWishlistAddRequest request);
 }
