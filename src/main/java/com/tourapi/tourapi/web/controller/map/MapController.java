@@ -16,6 +16,7 @@ import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapSuccessStatus;
 import com.tourapi.tourapi.map.domain.TourLocation;
+import com.tourapi.tourapi.map.domain.Festival;
 import com.tourapi.tourapi.map.dto.CommunityFacilityDto;
 import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 import com.tourapi.tourapi.map.dto.DetailAggregate;
@@ -93,6 +94,22 @@ public class MapController {
     ) {
         DetailIntroResponse detail = tourLocationService.getDetailIntro(contentId, contentTypeId);
         return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, detail);
+    }
+
+    @GetMapping("/festivals")
+    @Operation(
+            summary = "전국 축제 정보 조회",
+            description = "전국에서 진행 중인 축제/행사 정보를 조회합니다. 페이지네이션을 지원합니다."
+    )
+    @ApiErrorCodeExample(value = MapErrorStatus.class, codes = {"EXTERNAL_API_FAILURE", "INVALID_PARAMETER"})
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"INTERNAL_SERVER_ERROR"})
+    public ResponseEntity<ApiResponse<List<Festival>>> getFestivals(
+            @RequestParam(name = "pageNo", defaultValue = "1") Integer pageNo,
+            @RequestParam(name = "numOfRows", defaultValue = "10") Integer numOfRows,
+            @RequestParam(name = "json", defaultValue = "true") boolean json
+    ) {
+        List<Festival> festivals = tourLocationService.getFestivals(pageNo, numOfRows);
+        return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, festivals);
     }
 
     @GetMapping("/detail")
