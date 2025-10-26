@@ -4,10 +4,10 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class ExternalTourApiResponse {
+public class ExternalTourApiResponse<T> {
     private String resultCode;
     private String resultMsg;
-    private List<ExternalTourLocationDto> items;
+    private List<T> items;
 }
 
 

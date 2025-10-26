@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.tourapi.tourapi.map.adapter.TourLocationAdapter;
 import com.tourapi.tourapi.map.domain.TourLocation;
+import com.tourapi.tourapi.map.domain.Festival;
 import com.tourapi.tourapi.map.dto.CommunityFacilityDto;
 import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 
@@ -51,14 +52,6 @@ public class TourLocationService {
         return results;
     }
 
-    private String buildAddress(String road, String jibun) {
-        if (road != null && !road.isBlank() && jibun != null && !jibun.isBlank()) {
-            return road + " | " + jibun;
-        }
-        return road != null && !road.isBlank() ? road : jibun;
-    }
-
-
     public List<TourLocation> searchByBounds(Double swLat, Double swLng, Double neLat, Double neLng, Integer category, Integer zoomLevel) {
         // 영역 중심점 계산 (남서-북동 좌표 기준)
         Double centerLat = (swLat + neLat) / 2;
@@ -77,6 +70,15 @@ public class TourLocationService {
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingDouble(loc -> haversine(centerLat, centerLng, loc.getLatitude(), loc.getLongitude())))
                 .toList();
+    }
+
+    public List<Festival> getFestivals(Integer pageNo, Integer numOfRows) {
+        long start = System.currentTimeMillis();
+        List<Festival> results = tourLocationAdapter.fetchFestivals(pageNo, numOfRows, true);
+        long ms = System.currentTimeMillis() - start;
+        log.info("TourLocationService 축제 조회 완료: pageNo={}, numOfRows={} → {}건, 총 {} ms 소요", 
+                pageNo, numOfRows, results.size(), ms);
+        return results;
     }
 
     public DetailIntroResponse getDetailIntro(Long contentId, Integer contentTypeId) {
