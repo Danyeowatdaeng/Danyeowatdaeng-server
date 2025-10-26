@@ -6,15 +6,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tourapi.tourapi.auth.jwt.UserPrincipal;
 import com.tourapi.tourapi.common.exception.ApiResponse;
 import com.tourapi.tourapi.common.exception.ApiErrorCodeExample;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapErrorStatus;
 import com.tourapi.tourapi.common.exception.map.status.MapSuccessStatus;
+import com.tourapi.tourapi.common.exception.member.status.MemberErrorStatus;
+import com.tourapi.tourapi.common.exception.wishlist.status.WishlistErrorStatus;
+import com.tourapi.tourapi.common.exception.wishlist.status.WishlistSuccessStatus;
 import com.tourapi.tourapi.map.domain.TourLocation;
 import com.tourapi.tourapi.map.domain.Festival;
 import com.tourapi.tourapi.map.dto.CommunityFacilityDto;
@@ -22,11 +28,19 @@ import com.tourapi.tourapi.map.dto.DetailIntroResponse;
 import com.tourapi.tourapi.map.dto.DetailAggregate;
 import com.tourapi.tourapi.map.service.DetailAggregationService;
 import com.tourapi.tourapi.map.service.TourLocationService;
+import com.tourapi.tourapi.wishlist.domain.Wishlist;
+import com.tourapi.tourapi.wishlist.dto.WishlistAddRequest;
+import com.tourapi.tourapi.wishlist.dto.WishlistAdapter;
+import com.tourapi.tourapi.wishlist.dto.WishlistResponse;
+import com.tourapi.tourapi.wishlist.service.WishlistService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/api/map")
@@ -37,6 +51,8 @@ public class MapController {
 
     private final TourLocationService tourLocationService;
     private final DetailAggregationService detailAggregationService;
+    private final WishlistService wishlistService;
+    private final WishlistAdapter wishlistAdapter;
 
 
     @GetMapping("/search/keyword")
@@ -125,6 +141,60 @@ public class MapController {
     ) {
         DetailAggregate agg = detailAggregationService.getDetail(contentId, contentTypeId);
         return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, agg);
+    }
+
+    @PostMapping("/wishlist/add-from-tour-location")
+    @Operation(
+            summary = "TourLocation을 찜하기에 추가",
+            description = "영역 기반 검색 결과(TourLocation)를 찜하기에 추가합니다."
+    )
+    @SecurityRequirement(name = "accessToken")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
+    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"}) // MEMBER_NOT_FOUND
+    @ApiErrorCodeExample(value = WishlistErrorStatus.class, codes = {"WISHLIST4002"}) // ALREADY_ADDED_TO_WISHLIST
+    public ResponseEntity<ApiResponse<WishlistResponse>> addTourLocationToWishlist(
+            @Valid @RequestBody TourLocation tourLocation,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+
+        Long memberId = principal.getId();
+        WishlistAddRequest request = wishlistAdapter.fromTourLocation(tourLocation);
+        Wishlist wishlist = wishlistService.addToWishlist(memberId, request);
+        WishlistResponse response = WishlistResponse.from(wishlist);
+
+        log.info("TourLocation added to wishlist: memberId={}, contentId={}, title={}", 
+                memberId, request.getContentId(), request.getTitle());
+        return ApiResponse.onSuccess(WishlistSuccessStatus.WISHLIST_ADDED, response);
+    }
+
+    @PostMapping("/wishlist/add-from-community-facility")
+    @Operation(
+            summary = "CommunityFacility를 찜하기에 추가",
+            description = "키워드 검색 결과(CommunityFacility)를 찜하기에 추가합니다."
+    )
+    @SecurityRequirement(name = "accessToken")
+    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
+    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"}) // MEMBER_NOT_FOUND
+    @ApiErrorCodeExample(value = WishlistErrorStatus.class, codes = {"WISHLIST4002"}) // ALREADY_ADDED_TO_WISHLIST
+    public ResponseEntity<ApiResponse<WishlistResponse>> addCommunityFacilityToWishlist(
+            @Valid @RequestBody CommunityFacilityDto facility,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        if (principal == null) {
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+
+        Long memberId = principal.getId();
+        WishlistAddRequest request = wishlistAdapter.fromCommunityFacility(facility);
+        Wishlist wishlist = wishlistService.addToWishlist(memberId, request);
+        WishlistResponse response = WishlistResponse.from(wishlist);
+
+        log.info("CommunityFacility added to wishlist: memberId={}, contentId={}, title={}", 
+                memberId, request.getContentId(), request.getTitle());
+        return ApiResponse.onSuccess(WishlistSuccessStatus.WISHLIST_ADDED, response);
     }
 }
 

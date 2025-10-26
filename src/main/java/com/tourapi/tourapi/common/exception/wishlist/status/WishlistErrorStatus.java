@@ -16,7 +16,10 @@ public enum WishlistErrorStatus implements ErrorResponse {
     WISHLIST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "WISHLIST4003", "찜하기에 접근할 권한이 없습니다."),
 
     @ExplainError("이미 삭제된 찜하기")
-    WISHLIST_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "WISHLIST4004", "이미 삭제된 찜하기입니다.");
+    WISHLIST_ALREADY_DELETED(HttpStatus.BAD_REQUEST, "WISHLIST4004", "이미 삭제된 찜하기입니다."),
+
+    @ExplainError("유효하지 않은 콘텐츠 ID")
+    INVALID_CONTENT_ID(HttpStatus.BAD_REQUEST, "WISHLIST4005", "유효하지 않은 콘텐츠 ID입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

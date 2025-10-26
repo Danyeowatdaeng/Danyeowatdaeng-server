@@ -33,9 +33,15 @@ public class WishlistServiceImpl implements WishlistService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberHandler(MemberErrorStatus.MEMBER_NOT_FOUND));
 
+        // contentId가 null인 경우 (CSV 데이터) getContentId()에서 자동 생성됨
+        Long contentId = request.getContentId();
+        if (contentId == null) {
+            throw new WishlistHandler(WishlistErrorStatus.INVALID_CONTENT_ID);
+        }
+
         // 이미 찜한 관광지인지 확인
         Optional<Wishlist> existingWishlist = wishlistRepository
-                .findByMemberIdAndContentIdAndDeletedFalse(memberId, request.getContentId());
+                .findByMemberIdAndContentIdAndDeletedFalse(memberId, contentId);
 
         if (existingWishlist.isPresent()) {
             throw new WishlistHandler(WishlistErrorStatus.ALREADY_ADDED_TO_WISHLIST);
@@ -43,7 +49,7 @@ public class WishlistServiceImpl implements WishlistService {
 
         Wishlist wishlist = Wishlist.builder()
                 .member(member)
-                .contentId(request.getContentId())
+                .contentId(contentId)
                 .contentTypeId(request.getContentTypeId())
                 .title(request.getTitle())
                 .address(request.getAddress())
@@ -54,8 +60,8 @@ public class WishlistServiceImpl implements WishlistService {
                 .build();
 
         Wishlist savedWishlist = wishlistRepository.save(wishlist);
-        log.info("Wishlist added: memberId={}, contentId={}, title={}",
-                memberId, request.getContentId(), request.getTitle());
+        log.info("Wishlist added: memberId={}, contentId={}, title={}, source={}",
+                memberId, contentId, request.getTitle(), request.getSource());
 
         return savedWishlist;
     }
