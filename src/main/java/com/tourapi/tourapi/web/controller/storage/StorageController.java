@@ -1,20 +1,25 @@
 package com.tourapi.tourapi.web.controller.storage;
 
+import com.tourapi.tourapi.auth.jwt.UserPrincipal;
 import com.tourapi.tourapi.common.exception.ApiResponse;
 import com.tourapi.tourapi.common.exception.general.status.ErrorStatus;
 import com.tourapi.tourapi.common.exception.general.status.SuccessStatus;
 import com.tourapi.tourapi.petAvatar.dto.PresignUploadResponse;
 import com.tourapi.tourapi.petAvatar.dto.CreateAvatarFromStorageRequest;
 import com.tourapi.tourapi.petAvatar.dto.CreateAvatarFromStorageResponse;
+import com.tourapi.tourapi.petAvatar.dto.AttachImageRequest;
 import com.tourapi.tourapi.petAvatar.service.S3PresignService;
 import com.tourapi.tourapi.petAvatar.service.PetAvatarService;
+import com.tourapi.tourapi.petAvatar.PetAvatar;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -32,20 +37,23 @@ public class StorageController {
     private final PetAvatarService petAvatarService;
 
     /**
-     * PetAvatar 전용 사전서명 업로드 URL 생성
-     * avatarId 하위 경로로 업로드하도록 prefix를 강제합니다.
+     * 새 PetAvatar 생성용 사전서명 업로드 URL 생성
+     * Gemini 변환 결과를 저장할 수 있는 사전서명 URL을 생성합니다.
      */
-    @PostMapping("/presign/pet-avatars/{avatarId}")
+    @PostMapping("/presign/pet-avatars")
     @Operation(
-        summary = "PetAvatar 업로드용 사전서명 URL 생성",
-        description = "지정된 avatarId 경로 하위로 업로드할 수 있는 사전서명 URL을 생성합니다."
+        summary = "새 PetAvatar 생성용 사전서명 URL 생성",
+        description = "Gemini 변환 결과를 저장할 수 있는 사전서명 URL을 생성합니다. " +
+                    "업로드 완료 후 /api/v1/storage/pet-avatars 엔드포인트로 새 PetAvatar를 생성할 수 있습니다."
     )
-    public ResponseEntity<ApiResponse<PresignUploadResponse>> presignPetAvatarUpload(
-            @Parameter(name = "avatarId", in = ParameterIn.PATH, required = true, description = "대상 PetAvatar ID")
-            @PathVariable("avatarId") Long avatarId) {
+    public ResponseEntity<ApiResponse<PresignUploadResponse>> presignPetAvatarUpload() {
+
+        log.info("=== 새 PetAvatar 생성용 사전서명 URL 생성 요청 시작 ===");
 
         try {
-            String enforcedPrefix = "result"; // S3PresignServiceImpl은 input|result|thumb 만 허용
+            // Gemini 변환 결과 저장용 사전서명 URL 생성
+            String enforcedPrefix = "result"; // Gemini 변환 결과는 result 폴더에 저장
+            log.info("사전서명 URL 생성 중 - prefix: {}", enforcedPrefix);
 
             S3PresignService.PresignUploadRequest presignRequest =
                 S3PresignService.PresignUploadRequest.builder()
@@ -65,17 +73,20 @@ public class StorageController {
                 .cdnUrl(presignResponse.getCdnUrl())
                 .build();
 
-            log.info("Generated pet-avatar presigned URL: {} for avatar {}", presignResponse.getObjectKey(), avatarId);
+            log.info("=== 새 PetAvatar 생성용 사전서명 URL 생성 완료 ===");
+            log.info("생성된 S3 키: {}", presignResponse.getObjectKey());
+            log.info("만료 시간: {} 초", presignResponse.getExpiresIn());
+            log.info("CDN URL: {}", presignResponse.getCdnUrl());
+            log.info("다음 단계: S3 업로드 완료 후 POST /api/v1/storage/pet-avatars로 새 PetAvatar 생성");
+            
             return ApiResponse.onSuccess(SuccessStatus.OK, response);
 
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid presign request for avatar {}: {}", avatarId, e.getMessage());
-            return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, null);
         } catch (Exception e) {
-            log.error("Failed to generate pet-avatar presigned URL for avatar {}", avatarId, e);
+            log.error("새 PetAvatar 생성용 사전서명 URL 생성 실패", e);
             return ApiResponse.onFailure(ErrorStatus.INTERNAL_SERVER_ERROR, null);
         }
     }
+
 
     /**
      * S3에 업로드된 이미지로 새 PetAvatar 생성
@@ -83,15 +94,30 @@ public class StorageController {
     @PostMapping("/pet-avatars")
     @Operation(
         summary = "S3 URL로 새 PetAvatar 생성",
-        description = "presign 업로드 완료된 s3Key/cdnUrl로 새 커스텀 PetAvatar를 생성합니다."
+        description = "presign 업로드 완료된 s3Key/cdnUrl로 새 커스텀 PetAvatar를 생성합니다.",
+        security = @SecurityRequirement(name = "accessToken")
     )
     public ResponseEntity<ApiResponse<CreateAvatarFromStorageResponse>> createPetAvatarFromStorage(
-            @RequestBody CreateAvatarFromStorageRequest request) {
+            @RequestBody CreateAvatarFromStorageRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        
+        log.info("=== 새 PetAvatar 생성 요청 시작 ===");
+        
+        if (principal == null) {
+            log.warn("인증되지 않은 사용자의 PetAvatar 생성 시도");
+            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
+        }
+        
+        Long memberId = principal.getId();
+        log.info("요청 정보 - DisplayName: {}, S3Key: {}, MemberId: {}", 
+                request.getDisplayName(), request.getS3Key(), memberId);
+
         try {
             String displayName = (request.getDisplayName() == null || request.getDisplayName().isBlank())
                 ? "Custom Avatar"
                 : request.getDisplayName();
 
+            log.info("PetAvatar 생성 중 - DisplayName: {}", displayName);
             var created = petAvatarService.createCustomPetAvatarFromStorage(
                 com.tourapi.tourapi.petAvatar.enums.PetType.CUSTOM,
                 displayName,
@@ -99,7 +125,7 @@ public class StorageController {
                 request.getCdnUrl(),
                 request.getMime(),
                 com.tourapi.tourapi.petAvatar.enums.PetAvatarStyle.PIXEL,
-                request.getMemberId()
+                memberId
             );
 
             CreateAvatarFromStorageResponse response = CreateAvatarFromStorageResponse.builder()
@@ -110,12 +136,16 @@ public class StorageController {
                 .imageVersion(created.getVersion())
                 .build();
 
+            log.info("=== 새 PetAvatar 생성 완료 ===");
+            log.info("생성된 PetAvatar - ID: {}, Code: {}, Version: {}", 
+                    created.getId(), created.getCode(), created.getVersion());
+
             return ApiResponse.onSuccess(SuccessStatus.OK, response);
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid create-from-storage request: {}", e.getMessage());
+            log.warn("새 PetAvatar 생성 실패 - 에러: {}", e.getMessage());
             return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, null);
         } catch (Exception e) {
-            log.error("Failed to create PetAvatar from storage", e);
+            log.error("새 PetAvatar 생성 중 예외 발생", e);
             return ApiResponse.onFailure(ErrorStatus.INTERNAL_SERVER_ERROR, null);
         }
     }
