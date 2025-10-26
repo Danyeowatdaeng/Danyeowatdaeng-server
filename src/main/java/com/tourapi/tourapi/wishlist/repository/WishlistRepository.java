@@ -35,4 +35,7 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
 
     // 특정 회원이 특정 관광지를 찜했는지 확인 (boolean)
     boolean existsByMemberIdAndContentIdAndDeletedFalse(Long memberId, Long contentId);
+
+    // 삭제 상태와 관계없이 특정 회원이 특정 관광지를 찜했는지 확인 (복원용)
+    Optional<Wishlist> findByMemberIdAndContentId(Long memberId, Long contentId);
 }
