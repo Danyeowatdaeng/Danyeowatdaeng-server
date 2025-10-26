@@ -40,8 +40,8 @@ public class WishlistAdapter {
         }
 
         WishlistAddRequest request = new WishlistAddRequest();
-        // CSV 데이터는 contentId가 없으므로 null로 설정 (getContentId()에서 자동 생성됨)
-        request.setContentId(null);
+        // CSV 데이터는 contentId가 없으므로 랜덤 숫자 생성
+        request.setContentId(generateRandomContentId());
         request.setContentTypeId(null); // CSV에는 contentTypeId가 없음
         request.setTitle(facility.getName());
         request.setAddress(facility.getRoadAddress() != null ? facility.getRoadAddress() : facility.getJibunAddress());
@@ -51,5 +51,13 @@ public class WishlistAdapter {
         request.setSource("CSV");
 
         return request;
+    }
+
+    /**
+     * CSV 데이터용 랜덤 contentId 생성
+     * 100000 ~ 999999 범위의 랜덤 숫자
+     */
+    private Long generateRandomContentId() {
+        return (long) (Math.random() * 900000) + 100000;
     }
 }
