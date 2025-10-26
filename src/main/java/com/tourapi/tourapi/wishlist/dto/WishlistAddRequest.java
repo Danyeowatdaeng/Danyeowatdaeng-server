@@ -31,22 +31,4 @@ public class WishlistAddRequest {
 
     @Schema(description = "데이터 소스 (TOUR_API, CSV)", example = "TOUR_API")
     private String source;
-
-    /**
-     * CSV 데이터의 경우 contentId가 없으므로 가상의 ID를 생성합니다.
-     * 위도, 경도, 이름을 기반으로 해시값을 생성하여 고유한 ID를 만듭니다.
-     */
-    public Long getContentId() {
-        if (contentId != null) {
-            return contentId;
-        }
-        
-        // CSV 데이터의 경우 가상의 contentId 생성
-        if (source != null && "CSV".equals(source) && title != null && latitude != null && longitude != null) {
-            String uniqueString = title + latitude + longitude;
-            return Math.abs((long) uniqueString.hashCode());
-        }
-        
-        return null;
-    }
 }

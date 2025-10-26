@@ -1,6 +1,7 @@
 package com.tourapi.tourapi.web.controller.map;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -143,17 +144,18 @@ public class MapController {
         return ApiResponse.onSuccess(MapSuccessStatus.SEARCH_SUCCESS, agg);
     }
 
-    @PostMapping("/wishlist/add-from-tour-location")
+    @PostMapping("/wishlist/add")
     @Operation(
-            summary = "TourLocation을 찜하기에 추가",
-            description = "영역 기반 검색 결과(TourLocation)를 찜하기에 추가합니다."
+            summary = "검색 결과를 찜하기에 추가",
+            description = "키워드 검색 결과(CommunityFacility) 또는 영역 검색 결과(TourLocation)를 찜하기에 추가합니다. " +
+                        "요청 본문에 'source' 필드로 'CSV' 또는 'TOUR_API'를 명시하여 데이터 타입을 구분합니다."
     )
     @SecurityRequirement(name = "accessToken")
     @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
     @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"}) // MEMBER_NOT_FOUND
     @ApiErrorCodeExample(value = WishlistErrorStatus.class, codes = {"WISHLIST4002"}) // ALREADY_ADDED_TO_WISHLIST
-    public ResponseEntity<ApiResponse<WishlistResponse>> addTourLocationToWishlist(
-            @Valid @RequestBody TourLocation tourLocation,
+    public ResponseEntity<ApiResponse<WishlistResponse>> addToWishlist(
+            @Valid @RequestBody Map<String, Object> requestData,
             @AuthenticationPrincipal UserPrincipal principal) {
 
         if (principal == null) {
@@ -161,40 +163,68 @@ public class MapController {
         }
 
         Long memberId = principal.getId();
-        WishlistAddRequest request = wishlistAdapter.fromTourLocation(tourLocation);
+        WishlistAddRequest request;
+        
+        // source 필드로 데이터 타입 구분
+        String source = (String) requestData.get("source");
+        if ("CSV".equals(source)) {
+            // CommunityFacilityDto로 변환
+            CommunityFacilityDto facility = convertToCommunityFacility(requestData);
+            request = wishlistAdapter.fromCommunityFacility(facility);
+        } else if ("TOUR_API".equals(source)) {
+            // TourLocation으로 변환
+            TourLocation tourLocation = convertToTourLocation(requestData);
+            request = wishlistAdapter.fromTourLocation(tourLocation);
+        } else {
+            log.error("Invalid source type: {}", source);
+            return ApiResponse.onFailure(ErrorStatus.BAD_REQUEST, null);
+        }
+
         Wishlist wishlist = wishlistService.addToWishlist(memberId, request);
         WishlistResponse response = WishlistResponse.from(wishlist);
 
-        log.info("TourLocation added to wishlist: memberId={}, contentId={}, title={}", 
-                memberId, request.getContentId(), request.getTitle());
+        log.info("Item added to wishlist: memberId={}, contentId={}, title={}, source={}", 
+                memberId, request.getContentId(), request.getTitle(), source);
         return ApiResponse.onSuccess(WishlistSuccessStatus.WISHLIST_ADDED, response);
     }
 
-    @PostMapping("/wishlist/add-from-community-facility")
-    @Operation(
-            summary = "CommunityFacility를 찜하기에 추가",
-            description = "키워드 검색 결과(CommunityFacility)를 찜하기에 추가합니다."
-    )
-    @SecurityRequirement(name = "accessToken")
-    @ApiErrorCodeExample(value = ErrorStatus.class, codes = {"COMMON4001"}) // UNAUTHORIZED
-    @ApiErrorCodeExample(value = MemberErrorStatus.class, codes = {"MEMBER4001"}) // MEMBER_NOT_FOUND
-    @ApiErrorCodeExample(value = WishlistErrorStatus.class, codes = {"WISHLIST4002"}) // ALREADY_ADDED_TO_WISHLIST
-    public ResponseEntity<ApiResponse<WishlistResponse>> addCommunityFacilityToWishlist(
-            @Valid @RequestBody CommunityFacilityDto facility,
-            @AuthenticationPrincipal UserPrincipal principal) {
+    /**
+     * Map을 CommunityFacilityDto로 변환
+     */
+    private CommunityFacilityDto convertToCommunityFacility(Map<String, Object> data) {
+        return CommunityFacilityDto.builder()
+                .name((String) data.get("name"))
+                .category3((String) data.get("category3"))
+                .roadAddress((String) data.get("roadAddress"))
+                .jibunAddress((String) data.get("jibunAddress"))
+                .homepage((String) data.get("homepage"))
+                .closedDays((String) data.get("closedDays"))
+                .openingHours((String) data.get("openingHours"))
+                .latitude(data.get("latitude") != null ? ((Number) data.get("latitude")).doubleValue() : null)
+                .longitude(data.get("longitude") != null ? ((Number) data.get("longitude")).doubleValue() : null)
+                .phone((String) data.get("phone"))
+                .source("CSV")
+                .build();
+    }
 
-        if (principal == null) {
-            return ApiResponse.onFailure(ErrorStatus.UNAUTHORIZED, null);
-        }
-
-        Long memberId = principal.getId();
-        WishlistAddRequest request = wishlistAdapter.fromCommunityFacility(facility);
-        Wishlist wishlist = wishlistService.addToWishlist(memberId, request);
-        WishlistResponse response = WishlistResponse.from(wishlist);
-
-        log.info("CommunityFacility added to wishlist: memberId={}, contentId={}, title={}", 
-                memberId, request.getContentId(), request.getTitle());
-        return ApiResponse.onSuccess(WishlistSuccessStatus.WISHLIST_ADDED, response);
+    /**
+     * Map을 TourLocation으로 변환
+     */
+    private TourLocation convertToTourLocation(Map<String, Object> data) {
+        return TourLocation.builder()
+                .id(data.get("id") != null ? ((Number) data.get("id")).longValue() : null)
+                .title((String) data.get("title"))
+                .category(data.get("category") != null ? ((Number) data.get("category")).intValue() : null)
+                .address((String) data.get("address"))
+                .description((String) data.get("description"))
+                .imageUrl1((String) data.get("imageUrl1"))
+                .imageUrl2((String) data.get("imageUrl2"))
+                .latitude(data.get("latitude") != null ? ((Number) data.get("latitude")).doubleValue() : null)
+                .longitude(data.get("longitude") != null ? ((Number) data.get("longitude")).doubleValue() : null)
+                .distance(data.get("distance") != null ? ((Number) data.get("distance")).intValue() : null)
+                .phoneNumber((String) data.get("phoneNumber"))
+                .homepageUrl((String) data.get("homepageUrl"))
+                .build();
     }
 }
 
