@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(name = "CreateAvatarFromStorageRequest", example = "{\n  \"s3Key\": \"result/2025/09/15/xxxx.png\",\n  \"cdnUrl\": \"https://cdn.example.com/result/2025/09/15/xxxx.png\",\n  \"mime\": \"image/png\",\n  \"memberId\": 123\n}")
+@Schema(name = "CreateAvatarFromStorageRequest", example = "{\n  \"s3Key\": \"result/2025/09/15/xxxx.png\",\n  \"cdnUrl\": \"https://cdn.example.com/result/2025/09/15/xxxx.png\",\n  \"mime\": \"image/png\"\n}")
 public class CreateAvatarFromStorageRequest {
 
     @JsonProperty("petType")
@@ -33,9 +33,6 @@ public class CreateAvatarFromStorageRequest {
 
     @JsonProperty("mime")
     private String mime;
-
-    @JsonProperty("memberId")
-    private Long memberId;
 }
 
 
